@@ -5,7 +5,7 @@
 
   import FormStyledButton from '../buttons/FormStyledButton.svelte';
   import FormProvider from '../forms/FormProvider.svelte';
-  import AceEditor from '../query/AceEditor.svelte';
+  import MonacoEditor from '../query/MonacoEditor.svelte';
   import keycodes from '../utility/keycodes';
 
   import ModalBase from './ModalBase.svelte';
@@ -29,8 +29,11 @@
   let textValue = stringifyCellValue(value, 'multilineEditorIntent', dataEditorTypesBehaviour).value;
   const originalHexValue = textValue;
 
+  // TODO: 候选值列表应从外部传入（来源为其他 column 的 100+ 个 String 值，具体来源后续再确定）。
+  // 目前使用假数据（"1" ~ "100"）先跑通自动补全流程。
+  const candidateValues: string[] = Array.from({ length: 100 }, (_, i) => String(i + 1));
+
   onMount(() => {
-    editor.getEditor().focus();
     showDecode = textValue.startsWith('0x') && !textValue.includes('\n');
     if (safeJsonParse(textValue)) syntaxMode = 'json';
     if (textValue.match(/<\/[a-zA-z0-9-]+\s*>/)) {
@@ -40,6 +43,29 @@
       } else {
         syntaxMode = 'xml';
       }
+    }
+
+    // 注册自动补全（纯文本模式）
+    if ((window as any).monaco) {
+      (window as any).monaco.languages.registerCompletionItemProvider('plaintext', {
+        provideCompletionItems: (model: any, position: any) => {
+          const word = model.getWordUntilPosition(position);
+          const range = {
+            startLineNumber: position.lineNumber,
+            endLineNumber: position.lineNumber,
+            startColumn: word.startColumn,
+            endColumn: word.endColumn,
+          };
+          return {
+            suggestions: candidateValues.map((val) => ({
+              label: val,
+              kind: (window as any).monaco.languages.CompletionItemKind.Value,
+              insertText: val,
+              range,
+            })),
+          };
+        },
+      });
     }
   });
 
@@ -80,9 +106,9 @@
     let valueToSave = textValue;
     if (decodeMode) {
       valueToSave =
-        textValue === decodedOriginalValue
-          ? originalHexValue
-          : `0x${arrayToHexString(iconv.encode(textValue, decodeMode))}`;
+              textValue === decodedOriginalValue
+                      ? originalHexValue
+                      : `0x${arrayToHexString(iconv.encode(textValue, decodeMode))}`;
     }
     onSave(parseCellValue(valueToSave, dataEditorTypesBehaviour));
     closeCurrentModal();
@@ -157,12 +183,11 @@
 
     <div class="editor">
       {#key !!decodeMode}
-        <AceEditor
-          bind:value={textValue}
-          bind:this={editor}
-          onKeyDown={handleKeyDown}
-          mode={syntaxMode}
-          readOnly={!!decodeMode}
+        <MonacoEditor
+                bind:value={textValue}
+                bind:this={editor}
+                {onKeyDown}
+                readOnly={!!decodeMode}
         />
       {/key}
     </div>

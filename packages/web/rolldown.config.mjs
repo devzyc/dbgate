@@ -73,6 +73,7 @@ export default defineConfig([
       '.jpg': 'dataurl',
       '.gif': 'dataurl',
       '.svg': 'dataurl',
+      '.ttf': 'dataurl',
     },
     plugins: [
       // ace-builds addon files (keybinding-vim, modes, themes, etc.) reference
