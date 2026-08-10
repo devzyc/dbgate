@@ -25,6 +25,14 @@
         completionDisposable?.dispose();
 
         completionDisposable = monaco.languages.registerCompletionItemProvider(LANGUAGE_ID, {
+            // 声明 0-9 为"触发字符"（trigger characters），用于绕开 Monaco 对纯数字单词
+            // 不触发 quickSuggestions 的内置限制（见 suggestModel.js 的 LineContext.shouldAutoTrigger：
+            // 当已输入内容可被 Number() 解析为数字时直接 return false）。
+            // 原理：输入数字时 shouldAutoTrigger 返回 false，触发字符分支不会被提前 return，
+            // 于是按刚输入的字符查表命中本 provider，补全下拉正常弹出；
+            // 输入字母时 shouldAutoTrigger 返回 true，触发字符分支让位，
+            // 仍走原有 quickSuggestions 流程，行为完全不变。
+            triggerCharacters: Array.from({ length: 10 }, (_, i) => String(i)),
             provideCompletionItems: (model, position) => {
                 const word = model.getWordUntilPosition(position);
                 const range = {
@@ -68,6 +76,7 @@
             contextmenu: false,
             // 纯文本补全场景：输入即触发建议
             quickSuggestions: true,
+            // 必须为 true，provider 声明的 triggerCharacters 才会生效（见 suggestModel.js _updateTriggerCharacters）
             suggestOnTriggerCharacters: true,
         });
 
