@@ -1055,15 +1055,32 @@
     return selectedCells.length == 1 && cellEditable(selectedCells[0]);
   }
 
-  export function editCellValue() {
+  export async function editCellValue() {
     if (!currentCell) return false;
     const rowData = grider.getRowData(currentCell[0]);
     if (!rowData) return null;
     const cellData = rowData[realColumnUniqueNames[currentCell[1]]];
 
+    let cmdSuggestions = [];
+    try {
+      const rows = await apiCall('database-connections/load-field-values', {
+        conid,
+        database,
+        schemaName: display.baseTable?.schemaName,
+        pureName: display.baseTable?.pureName,
+        field: 'cmd',
+      });
+      if (Array.isArray(rows)) {
+        cmdSuggestions = rows.map(r => String(r.value ?? '')).filter(v => v.length > 0);
+      }
+    } catch (e) {
+      console.error('Failed to load cmd field values', e);
+    }
+
     showModal(EditCellDataModal, {
       value: cellData,
       dataEditorTypesBehaviour: getEditorTypes(),
+      suggestions: cmdSuggestions,
       onSave: value => grider.setCellValue(currentCell[0], realColumnUniqueNames[currentCell[1]], value),
     });
   }
@@ -1620,16 +1637,34 @@
     dragStartCell = null;
   }
 
-  function showMultilineCellEditorConditional(cell) {
+  async function showMultilineCellEditorConditional(cell) {
     if (!cell) return false;
     const rowData = grider.getRowData(cell[0]);
     if (!rowData) return null;
     const cellData = rowData[realColumnUniqueNames[cell[1]]];
     if (shouldOpenMultilineDialog(cellData)) {
       dragStartCell = null;
+
+      let cmdSuggestions = [];
+      try {
+        const rows = await apiCall('database-connections/load-field-values', {
+          conid,
+          database,
+          schemaName: display.baseTable?.schemaName,
+          pureName: display.baseTable?.pureName,
+          field: 'cmd',
+        });
+        if (Array.isArray(rows)) {
+          cmdSuggestions = rows.map(r => String(r.value ?? '')).filter(v => v.length > 0);
+        }
+      } catch (e) {
+        console.error('Failed to load cmd field values', e);
+      }
+
       showModal(EditCellDataModal, {
         dataEditorTypesBehaviour: getEditorTypes(),
         value: cellData,
+        suggestions: cmdSuggestions,
         onSave: value => grider.setCellValue(cell[0], realColumnUniqueNames[cell[1]], value),
       });
       return true;

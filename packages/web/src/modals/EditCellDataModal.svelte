@@ -19,6 +19,7 @@
   export let value;
 
   export let dataEditorTypesBehaviour;
+  export let suggestions = [];
 
   let editor;
   let syntaxMode = 'text';
@@ -28,21 +29,6 @@
 
   let textValue = stringifyCellValue(value, 'multilineEditorIntent', dataEditorTypesBehaviour).value;
   const originalHexValue = textValue;
-
-  // TODO: 候选值列表应从外部传入（来源为其他 column 的 100+ 个 String 值，具体来源后续再确定）。
-  // 目前使用假数据（"1" ~ "100"）先跑通自动补全流程。
-  const candidateValues: string[] = [
-    'Apple', 'Alan', 'Alice', 'Bob', 'Brian', 'Betty', 'Ben', 'Berlin', 'Brazil', 'Britain',
-    'Canada', 'Charles', 'Charlie', 'China', 'Catherine', 'Chris', 'Clara', 'David', 'Daniel', 'Denmark',
-    'Edward', 'Emma', 'Eric', 'Elizabeth', 'France', 'Germany', 'Greece', 'George', 'Grandma',
-    'Henry', 'Helen', 'Harry', 'Iceland', 'Ivy', 'Ian', 'Isabel', 'Italy', 'Jacob', 'James',
-    'Katherine', 'Kevin', 'Kate', 'Kenya', 'Kingston', 'Laura', 'London', 'Lisa', 'Lucy', 'Lily',
-    'Michael', 'Mary', 'Matthew', 'Mexico', 'Mum', 'Megan', 'Nancy', 'Norway', 'New Zealand',
-    'Oliver', 'Oxford', 'Owen', 'Pakistan', 'Paris', 'Peter', 'Paul', 'Queen', 'Quinn', 'Rachel',
-    'Ryan', 'Ruby', 'Robert', 'Sarah', 'Sweden', 'Samuel', 'Susan', 'Thomas', 'Tom', 'Tyler',
-    'United States', 'Victoria', 'Violet', 'William', 'Walter', 'Winnie', 'Xavier', 'Yale', 'York',
-    'Zachary', 'Zoe', 'Zeus', 'Australia', 'Argentina', 'Albert', 'Amber', 'Aaron'
-  ];
 
   onMount(() => {
     showDecode = textValue.startsWith('0x') && !textValue.includes('\n');
@@ -176,7 +162,7 @@
                 bind:this={editor}
                 onKeyDown={handleKeyDown}
                 readOnly={!!decodeMode}
-                suggestions={candidateValues}
+                suggestions={suggestions}
         />
       {/key}
     </div>
