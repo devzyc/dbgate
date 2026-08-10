@@ -31,7 +31,18 @@
 
   // TODO: 候选值列表应从外部传入（来源为其他 column 的 100+ 个 String 值，具体来源后续再确定）。
   // 目前使用假数据（"1" ~ "100"）先跑通自动补全流程。
-  const candidateValues: string[] = Array.from({ length: 100 }, (_, i) => String(i + 1));
+  const candidateValues: string[] = [
+    'Apple', 'Alan', 'Alice', 'Bob', 'Brian', 'Betty', 'Ben', 'Berlin', 'Brazil', 'Britain',
+    'Canada', 'Charles', 'Charlie', 'China', 'Catherine', 'Chris', 'Clara', 'David', 'Daniel', 'Denmark',
+    'Edward', 'Emma', 'Eric', 'Elizabeth', 'France', 'Germany', 'Greece', 'George', 'Grandma',
+    'Henry', 'Helen', 'Harry', 'Iceland', 'Ivy', 'Ian', 'Isabel', 'Italy', 'Jacob', 'James',
+    'Katherine', 'Kevin', 'Kate', 'Kenya', 'Kingston', 'Laura', 'London', 'Lisa', 'Lucy', 'Lily',
+    'Michael', 'Mary', 'Matthew', 'Mexico', 'Mum', 'Megan', 'Nancy', 'Norway', 'New Zealand',
+    'Oliver', 'Oxford', 'Owen', 'Pakistan', 'Paris', 'Peter', 'Paul', 'Queen', 'Quinn', 'Rachel',
+    'Ryan', 'Ruby', 'Robert', 'Sarah', 'Sweden', 'Samuel', 'Susan', 'Thomas', 'Tom', 'Tyler',
+    'United States', 'Victoria', 'Violet', 'William', 'Walter', 'Winnie', 'Xavier', 'Yale', 'York',
+    'Zachary', 'Zoe', 'Zeus', 'Australia', 'Argentina', 'Albert', 'Amber', 'Aaron'
+  ];
 
   onMount(() => {
     showDecode = textValue.startsWith('0x') && !textValue.includes('\n');
@@ -43,29 +54,6 @@
       } else {
         syntaxMode = 'xml';
       }
-    }
-
-    // 注册自动补全（纯文本模式）
-    if ((window as any).monaco) {
-      (window as any).monaco.languages.registerCompletionItemProvider('plaintext', {
-        provideCompletionItems: (model: any, position: any) => {
-          const word = model.getWordUntilPosition(position);
-          const range = {
-            startLineNumber: position.lineNumber,
-            endLineNumber: position.lineNumber,
-            startColumn: word.startColumn,
-            endColumn: word.endColumn,
-          };
-          return {
-            suggestions: candidateValues.map((val) => ({
-              label: val,
-              kind: (window as any).monaco.languages.CompletionItemKind.Value,
-              insertText: val,
-              range,
-            })),
-          };
-        },
-      });
     }
   });
 
@@ -186,8 +174,9 @@
         <MonacoEditor
                 bind:value={textValue}
                 bind:this={editor}
-                {onKeyDown}
+                onKeyDown={handleKeyDown}
                 readOnly={!!decodeMode}
+                suggestions={candidateValues}
         />
       {/key}
     </div>

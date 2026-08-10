@@ -13,8 +13,6 @@ import SetAdminPasswordPage from './SetAdminPasswordPage.svelte';
 import RedirectPage from './RedirectPage.svelte';
 import ForgotPasswordPage from './ForgotPasswordPage.svelte';
 import ResetPasswordPage from './ResetPasswordPage.svelte';
-import * as monaco from 'monaco-editor';
-(window as any).monaco = monaco;
 
 const isOauthCallback = handleOauthCallback();
 

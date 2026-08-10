@@ -56,6 +56,7 @@
             language: LANGUAGE_ID,
             readOnly,
             automaticLayout: true, // 容器尺寸变化时自动重排，省去手动 resize
+            fixedOverflowWidgets: true,
             minimap: { enabled: false },
             lineNumbers: 'off',
             glyphMargin: false,

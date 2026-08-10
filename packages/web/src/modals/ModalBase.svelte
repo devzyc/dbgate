@@ -90,7 +90,7 @@
   .window {
     background-color: var(--theme-content-background);
     border: var(--theme-modal-border);
-    overflow: auto;
+    overflow: visible;
     outline: none;
     display: flex;
     flex-direction: column;
