@@ -76,6 +76,22 @@
     textValue = JSON.stringify(parsed);
   }
 
+  function handleWrapWithSpan() {
+    const monacoInstance = editor?.getEditor?.();
+    if (!monacoInstance) return;
+
+    const selection = monacoInstance.getSelection();
+    if (!selection || selection.isEmpty()) return;
+
+    const selectedText = monacoInstance.getModel().getValueInRange(selection);
+    const wrappedText = `<span>${selectedText}</span>`;
+
+    monacoInstance.executeEdits('wrap-with-span', [{
+      range: selection,
+      text: wrappedText,
+    }]);
+  }
+
   function saveValue() {
     let valueToSave = textValue;
     if (decodeMode) {
@@ -94,6 +110,14 @@
     <div slot="header">{_t('dataGrid.editCellValue', { defaultMessage: 'Edit cell value' })}</div>
 
     <div class="editor-tools">
+      <button
+        type="button"
+        class="span-wrap-button"
+        data-testid="EditCellDataModal_wrapWithSpan"
+        on:click={handleWrapWithSpan}
+        title="Wrap selection with <span> tags"
+      ></button>
+
       {#if showDecode}
         <div class="editor-tool-field">
           <span>{_t('dataGrid.decode', { defaultMessage: 'Decode:' })}</span>
@@ -231,5 +255,23 @@
     box-sizing: border-box;
     height: 32px;
     padding: 5px 8px;
+  }
+
+  .span-wrap-button {
+    width: 20px;
+    height: 20px;
+    background-color: #e74c3c;
+    border: 1px solid #c0392b;
+    border-radius: 3px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .span-wrap-button:hover {
+    background-color: #c0392b;
+  }
+
+  .span-wrap-button:active {
+    background-color: #a93226;
   }
 </style>
