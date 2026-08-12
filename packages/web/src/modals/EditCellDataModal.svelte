@@ -26,7 +26,6 @@
   let decodeMode = '';
   let decodedOriginalValue = null;
   let showDecode = false;
-  let redDecorationIds: string[] = [];
 
   let textValue = stringifyCellValue(value, 'multilineEditorIntent', dataEditorTypesBehaviour).value;
   const originalHexValue = textValue;
@@ -84,14 +83,24 @@
     const selection = monacoInstance.getSelection();
     if (!selection || selection.isEmpty()) return;
 
-    // 清除之前的红色标记
-    if (redDecorationIds.length > 0) {
-        editor.clearRedHighlight(redDecorationIds);
-    }
-
-    // 使用 Monaco 的内联装饰机制，对选中范围施加红色文字样式
-    // 这与语法高亮走的是同一条渲染管线（viewLineRenderer._applyInlineDecorations）
-    redDecorationIds = editor.applyRedHighlight(selection) || [];
+    const model = monacoInstance.getModel();
+    const selectedText = model.getValueInRange(selection);
+    
+    // 将选中文本包裹在 <span class="dbgate-red-text"> 标签中
+    // 这样保存时会持久化到数据库
+    const wrappedText = `<span class="dbgate-red-text">${selectedText}</span>`;
+    
+    // 使用 model.getOffsetAt 将行列位置转换为字符串偏移量，支持多行选择
+    const startOffset = model.getOffsetAt(selection.getStartPosition());
+    const endOffset = model.getOffsetAt(selection.getEndPosition());
+    
+    // 直接更新 textValue（包含 span 标签），用于持久化
+    // MonacoEditor 组件的 watcher 会检测到变化，自动：
+    // 1. 从 textValue 中提取纯净文本（去掉 span 标签）显示在编辑器中
+    // 2. 应用红色装饰到对应的文本范围
+    textValue = textValue.substring(0, startOffset) + 
+                wrappedText + 
+                textValue.substring(endOffset);
   }
 
   function saveValue() {
