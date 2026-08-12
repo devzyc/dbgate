@@ -26,6 +26,7 @@
   let decodeMode = '';
   let decodedOriginalValue = null;
   let showDecode = false;
+  let redDecorationIds: string[] = [];
 
   let textValue = stringifyCellValue(value, 'multilineEditorIntent', dataEditorTypesBehaviour).value;
   const originalHexValue = textValue;
@@ -83,13 +84,14 @@
     const selection = monacoInstance.getSelection();
     if (!selection || selection.isEmpty()) return;
 
-    const selectedText = monacoInstance.getModel().getValueInRange(selection);
-    const wrappedText = `<span>${selectedText}</span>`;
+    // 清除之前的红色标记
+    if (redDecorationIds.length > 0) {
+        editor.clearRedHighlight(redDecorationIds);
+    }
 
-    monacoInstance.executeEdits('wrap-with-span', [{
-      range: selection,
-      text: wrappedText,
-    }]);
+    // 使用 Monaco 的内联装饰机制，对选中范围施加红色文字样式
+    // 这与语法高亮走的是同一条渲染管线（viewLineRenderer._applyInlineDecorations）
+    redDecorationIds = editor.applyRedHighlight(selection) || [];
   }
 
   function saveValue() {

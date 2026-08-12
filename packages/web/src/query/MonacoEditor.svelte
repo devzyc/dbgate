@@ -115,6 +115,22 @@
     export function focus() {
         editor?.focus();
     }
+
+    export function applyRedHighlight(range: any) {
+        if (!editor) return;
+        const decorations = editor.deltaDecorations([], [{
+            range,
+            options: {
+                inlineClassName: 'dbgate-red-text',
+            },
+        }]);
+        return decorations;
+    }
+
+    export function clearRedHighlight(decorationIds: string[]) {
+        if (!editor) return;
+        editor.deltaDecorations(decorationIds, []);
+    }
 </script>
 
 <div class="monaco-cell-editor" bind:this={containerEl}></div>
@@ -126,5 +142,9 @@
         top: 0;
         right: 0;
         bottom: 0;
+    }
+
+    :global(.dbgate-red-text) {
+        color: #e74c3c !important;
     }
 </style>
