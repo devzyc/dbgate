@@ -27,6 +27,20 @@
   let decodedOriginalValue = null;
   let showDecode = false;
 
+  // 通用文本颜色配置（可扩展）
+  const TEXT_COLORS = [
+    { name: 'gray', label: 'Gray', hex: '#808080' },
+    { name: 'brown', label: 'Brown', hex: '#A0522D' },
+    { name: 'orange', label: 'Orange', hex: '#E67E22' },
+    { name: 'yello', label: 'Yellow', hex: '#F1C40F' },
+    { name: 'green', label: 'Green', hex: '#27AE60' },
+    { name: 'blue', label: 'Blue', hex: '#2980B9' },
+    { name: 'purple', label: 'Purple', hex: '#8E44AD' },
+    { name: 'pink', label: 'Pink', hex: '#E91E8C' },
+    { name: 'red', label: 'Red', hex: '#E74C3C' },
+    { name: 'black', label: 'Black', hex: '#2C3E50' },
+  ];
+
   let textValue = stringifyCellValue(value, 'multilineEditorIntent', dataEditorTypesBehaviour).value;
   const originalHexValue = textValue;
 
@@ -76,31 +90,10 @@
     textValue = JSON.stringify(parsed);
   }
 
-  function handleWrapWithSpan() {
-    const monacoInstance = editor?.getEditor?.();
-    if (!monacoInstance) return;
-
-    const selection = monacoInstance.getSelection();
-    if (!selection || selection.isEmpty()) return;
-
-    const model = monacoInstance.getModel();
-    const selectedText = model.getValueInRange(selection);
-    
-    // 将选中文本包裹在 <span class="dbgate-red-text"> 标签中
-    // 这样保存时会持久化到数据库
-    const wrappedText = `<span class="dbgate-red-text">${selectedText}</span>`;
-    
-    // 使用 model.getOffsetAt 将行列位置转换为字符串偏移量，支持多行选择
-    const startOffset = model.getOffsetAt(selection.getStartPosition());
-    const endOffset = model.getOffsetAt(selection.getEndPosition());
-    
-    // 直接更新 textValue（包含 span 标签），用于持久化
-    // MonacoEditor 组件的 watcher 会检测到变化，自动：
-    // 1. 从 textValue 中提取纯净文本（去掉 span 标签）显示在编辑器中
-    // 2. 应用红色装饰到对应的文本范围
-    textValue = textValue.substring(0, startOffset) + 
-                wrappedText + 
-                textValue.substring(endOffset);
+  function handleWrapWithColor(colorName) {
+    // 调用 MonacoEditor 内部方法，所有操作在编辑器内完成
+    // 避免用编辑器 offset 切割 textValue 导致的 offset 不匹配问题
+    editor?.wrapSelectionWithColor?.(colorName);
   }
 
   function saveValue() {
@@ -121,13 +114,21 @@
     <div slot="header">{_t('dataGrid.editCellValue', { defaultMessage: 'Edit cell value' })}</div>
 
     <div class="editor-tools">
-      <button
-        type="button"
-        class="span-wrap-button"
-        data-testid="EditCellDataModal_wrapWithSpan"
-        on:click={handleWrapWithSpan}
-        title="Wrap selection with <span> tags"
-      ></button>
+      <!-- 文本颜色调色板 -->
+      <div class="color-palette">
+        {#each TEXT_COLORS as color}
+          <button
+            type="button"
+            class="color-button"
+            data-testid="EditCellDataModal_color_{color.name}"
+            on:click={() => handleWrapWithColor(color.name)}
+            title="Apply {color.label} color"
+          >
+            <span class="color-swatch" style="background-color: {color.hex}"></span>
+            <span class="color-label">{color.label}</span>
+          </button>
+        {/each}
+      </div>
 
       {#if showDecode}
         <div class="editor-tool-field">
@@ -237,6 +238,49 @@
     border-bottom: var(--theme-modal-border);
   }
 
+  .color-palette {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    width: 100%;
+    max-width: 500px;
+  }
+
+  .color-button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: transparent;
+    border: 1px solid var(--theme-modal-border, #444);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    color: inherit;
+    transition: background-color 0.15s;
+  }
+
+  .color-button:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .color-button:active {
+    background-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .color-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .color-label {
+    white-space: nowrap;
+    font-size: 11px;
+  }
+
   .editor-tool-buttons {
     display: flex;
     align-items: center;
@@ -268,21 +312,5 @@
     padding: 5px 8px;
   }
 
-  .span-wrap-button {
-    width: 20px;
-    height: 20px;
-    background-color: #e74c3c;
-    border: 1px solid #c0392b;
-    border-radius: 3px;
-    cursor: pointer;
-    flex-shrink: 0;
-  }
 
-  .span-wrap-button:hover {
-    background-color: #c0392b;
-  }
-
-  .span-wrap-button:active {
-    background-color: #a93226;
-  }
 </style>
