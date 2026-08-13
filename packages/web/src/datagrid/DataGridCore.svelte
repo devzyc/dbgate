@@ -2,6 +2,8 @@
   import { __t } from '../translations';
   const HORIZONTAL_SCROLL_END_PADDING = 64;
   const getCurrentDataGrid = () => getActiveComponent('DataGridCore');
+  // cmd 列自动补全的固定自定义候选词（与数据库历史值合并去重后作为最终候选）
+  const CUSTOM_CMD_SUGGESTIONS = ['HB', 'HS', 'heating', 'juggle', 'cc', 'ff', 'combo'];
 
   registerCommand({
     id: 'dataGrid.refresh',
@@ -517,6 +519,28 @@
   export const activator = createActivator('DataGridCore', false);
 
   export let dataEditorTypesBehaviourOverride = null;
+
+  /**
+   * 加载 cmd 列自动补全候选：固定自定义词 + 数据库历史值（去重合并）
+   */
+  async function loadCmdSuggestions() {
+    const apiValues = [];
+    try {
+      const rows = await apiCall('database-connections/load-field-values', {
+        conid,
+        database,
+        schemaName: display.baseTable?.schemaName,
+        pureName: display.baseTable?.pureName,
+        field: 'cmd',
+      });
+      if (Array.isArray(rows)) {
+        apiValues.push(...rows.map(r => String(r.value ?? '')).filter(v => v.length > 0));
+      }
+    } catch (e) {
+      console.error('Failed to load cmd field values', e);
+    }
+    return [...new Set([...CUSTOM_CMD_SUGGESTIONS, ...apiValues])];
+  }
 
   let rowPixelOffset = 0;
   let columnPixelOffset = 0;
@@ -1061,21 +1085,7 @@
     if (!rowData) return null;
     const cellData = rowData[realColumnUniqueNames[currentCell[1]]];
 
-    let cmdSuggestions = [];
-    try {
-      const rows = await apiCall('database-connections/load-field-values', {
-        conid,
-        database,
-        schemaName: display.baseTable?.schemaName,
-        pureName: display.baseTable?.pureName,
-        field: 'cmd',
-      });
-      if (Array.isArray(rows)) {
-        cmdSuggestions = rows.map(r => String(r.value ?? '')).filter(v => v.length > 0);
-      }
-    } catch (e) {
-      console.error('Failed to load cmd field values', e);
-    }
+    const cmdSuggestions = await loadCmdSuggestions();
 
     showModal(EditCellDataModal, {
       value: cellData,
@@ -1645,21 +1655,7 @@
     if (shouldOpenMultilineDialog(cellData)) {
       dragStartCell = null;
 
-      let cmdSuggestions = [];
-      try {
-        const rows = await apiCall('database-connections/load-field-values', {
-          conid,
-          database,
-          schemaName: display.baseTable?.schemaName,
-          pureName: display.baseTable?.pureName,
-          field: 'cmd',
-        });
-        if (Array.isArray(rows)) {
-          cmdSuggestions = rows.map(r => String(r.value ?? '')).filter(v => v.length > 0);
-        }
-      } catch (e) {
-        console.error('Failed to load cmd field values', e);
-      }
+      const cmdSuggestions = await loadCmdSuggestions();
 
       showModal(EditCellDataModal, {
         dataEditorTypesBehaviour: getEditorTypes(),
