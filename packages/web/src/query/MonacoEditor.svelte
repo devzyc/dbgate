@@ -157,68 +157,12 @@
     }
 
     /**
-     * 将纯净文本偏移映射到带标签文本偏移
-     * 遍历带标签文本，同步追踪两种文本的位置，建立映射表
-     * 例如: taggedText = "Hello <span class=\"sc-red\">World</span> Foo"
-     *        cleanOffset 6 ("W" in clean text) → taggedOffset 27 ("W" in tagged text)
-     */
-    function mapCleanToTagged(taggedText: string, cleanOffsets: number[]): Map<number, number> {
-        const result = new Map<number, number>();
-        const needed = new Set(cleanOffsets);
-        if (needed.size === 0) return result;
-
-        const spanRegex = /<span class="sc-([a-z]+)">([\s\S]*?)<\/span>/g;
-        let cleanPos = 0;
-        let taggedPos = 0;
-        let match;
-
-        while ((match = spanRegex.exec(taggedText)) !== null) {
-            // 处理 span 之前的普通文本
-            const beforeLen = match.index - taggedPos;
-            for (let i = 0; i < beforeLen; i++) {
-                if (needed.has(cleanPos)) {
-                    result.set(cleanPos, taggedPos);
-                }
-                cleanPos++;
-                taggedPos++;
-            }
-
-            // 处理 span 标签
-            const openTagEnd = taggedPos + match[0].indexOf('>') + 1; // '<span class="sc-xxx">' 结束位置
-            const content = match[2];
-
-            // 映射 span 内容区域的每个字符位置
-            // span 结束位置（cleanPos = span.endOffset）由下方"剩余普通文本"循环处理
-            for (let i = 0; i < content.length; i++) {
-                if (needed.has(cleanPos)) {
-                    if (i === 0) {
-                        result.set(cleanPos, openTagEnd); // span 内容开头 → 紧跟开放标签之后
-                    } else {
-                        result.set(cleanPos, openTagEnd + i);
-                    }
-                }
-                cleanPos++;
-            }
-
-            taggedPos = match.index + match[0].length; // 跳到 </span> 之后
-        }
-
-        // 处理剩余普通文本（包括 span 结束位置 cleanPos = span.endOffset）
-        while (cleanPos < taggedText.length) {
-            if (needed.has(cleanPos)) {
-                result.set(cleanPos, taggedPos);
-            }
-            cleanPos++;
-            taggedPos++;
-        }
-
-        return result;
-    }
-
-    /**
-     * 将选中文本包裹在指定颜色的 span 标签中
-     * 核心逻辑：在 value（已包含所有旧 span 标签）上操作，
-     * 而非在编辑器的纯净文本上操作，确保旧 span 标签不丢失。
+     * 将选中文本包裹在指定颜色的 span 标签中。
+     *
+     * 核心策略：始终基于编辑器中的纯净文本构建新标记文本，
+     * 将与选区重叠的旧 span 移除后重新应用保留的 span + 新 span，
+     * 从根本上避免产生嵌套 span（嵌套会导致 stripSpanTags 正则解析失败、
+     * 标签残留在编辑器显示中）。
      */
     export function wrapSelectionWithColor(colorName: string) {
         if (!editor) return;
@@ -227,34 +171,41 @@
 
         const model = editor.getModel();
         const selectedText = model.getValueInRange(selection);
-
-        // 获取编辑器中的纯净文本和选区位置
         const cleanText = model.getValue();
         const startOffset = model.getOffsetAt(selection.getStartPosition());
         const endOffset = model.getOffsetAt(selection.getEndPosition());
 
-        // 获取包含所有旧 span 标签的完整文本
-        const currentTaggedText = value ?? '';
+        // 保留与选区不重叠的旧 span，移除重叠的（被新颜色替代）
+        const spansToKeep = spanInfos.filter(
+            s => !(s.startOffset < endOffset && s.endOffset > startOffset)
+        );
 
-        let newTaggedText: string;
+        // 收集所有需要在纯文本上插入的标签（开放标签 + 关闭标签）
+        type InsertPoint = { offset: number; text: string; priority: number };
+        const inserts: InsertPoint[] = [];
 
-        if (currentTaggedText && currentTaggedText.includes('<span class="sc-')) {
-            // 有旧 span 标签 → 需要将纯净文本偏移映射到带标签文本的偏移
-            const offsetMap = mapCleanToTagged(currentTaggedText, [startOffset, endOffset]);
-            const taggedStart = offsetMap.get(startOffset) ?? startOffset;
-            const taggedEnd = offsetMap.get(endOffset) ?? endOffset;
-
-            newTaggedText =
-                currentTaggedText.substring(0, taggedStart) +
-                `<span class="sc-${colorName}">${selectedText}</span>` +
-                currentTaggedText.substring(taggedEnd);
-        } else {
-            // 没有旧 span 标签 → 直接在纯净文本上插入
-            newTaggedText =
-                cleanText.substring(0, startOffset) +
-                `<span class="sc-${colorName}">${selectedText}</span>` +
-                cleanText.substring(endOffset);
+        for (const span of spansToKeep) {
+            // 关闭标签优先于开放标签（同偏移时关闭在前）
+            inserts.push({ offset: span.startOffset, text: `<span class="sc-${span.color}">`, priority: 1 });
+            inserts.push({ offset: span.endOffset, text: `</span>`, priority: 0 });
         }
+
+        // 新颜色 span
+        inserts.push({ offset: startOffset, text: `<span class="sc-${colorName}">`, priority: 1 });
+        inserts.push({ offset: endOffset, text: `</span>`, priority: 0 });
+
+        // 按偏移升序，同偏移时关闭标签（priority 0）排在开放标签（priority 1）前
+        inserts.sort((a, b) => a.offset - b.offset || a.priority - b.priority);
+
+        // 从纯净文本 + 插入点构建标记文本
+        let newTaggedText = '';
+        let pos = 0;
+        for (const ins of inserts) {
+            newTaggedText += cleanText.substring(pos, ins.offset);
+            newTaggedText += ins.text;
+            pos = ins.offset;
+        }
+        newTaggedText += cleanText.substring(pos);
 
         // 阻止 onDidChangeModelContent 同步到外部
         isInternalChange = true;
