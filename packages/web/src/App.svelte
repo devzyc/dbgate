@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
 
   import CommandListener from './commands/CommandListener.svelte';
   import DataGridRowHeightMeter from './datagrid/DataGridRowHeightMeter.svelte';
@@ -7,6 +7,7 @@
 
   import PluginsProvider from './plugins/PluginsProvider.svelte';
   import Screen from './Screen.svelte';
+  import MobileScreen from './MobileScreen.svelte';
   import { loadingPluginStore, subscribeApiDependendStores } from './stores';
   import { setAppLoaded } from './utility/appLoadManager';
   import ErrorHandler from './utility/ErrorHandler.svelte';
@@ -31,6 +32,26 @@
   import { installCloudListeners } from './utility/cloudListeners';
 
   export let isAdminPage = false;
+
+  // 移动端分流：视口宽度 <= 600px 时渲染 MobileScreen（移动端专用页面），
+  // 桌面端始终走原 Screen，行为完全不变。
+  let isMobileView = false;
+  let mobileViewMediaQuery: MediaQueryList | null = null;
+
+  function handleMobileViewChange(ev: MediaQueryListEvent) {
+    isMobileView = ev.matches;
+  }
+
+  onMount(() => {
+    mobileViewMediaQuery = window.matchMedia('(max-width: 600px)');
+    isMobileView = mobileViewMediaQuery.matches;
+    mobileViewMediaQuery.addEventListener('change', handleMobileViewChange);
+  });
+
+  onDestroy(() => {
+    mobileViewMediaQuery?.removeEventListener('change', handleMobileViewChange);
+    mobileViewMediaQuery = null;
+  });
 
   let loadedApi = false;
   let loadedPlugins = false;
@@ -108,7 +129,11 @@
   {#if loadedPlugins}
     <OpenTabsOnStartup />
     <SettingsListener />
-    <Screen />
+    {#if isMobileView}
+      <MobileScreen />
+    {:else}
+      <Screen />
+    {/if}
   {:else}
     <AppStartInfo
       message={$loadingPluginStore.loadingPackageName
