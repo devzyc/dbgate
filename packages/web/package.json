@@ -4,7 +4,7 @@
   "scripts": {
     "build": "yarn build:index && node build-tailwind.js && cross-env NODE_ENV=production rolldown -c rolldown.config.mjs",
     "dev": "yarn build:index && node build-tailwind.js && cross-env API_URL=http://localhost:3000 rolldown -c rolldown.config.mjs -w",
-    "start": "sirv public --port 5001",
+    "start": "sirv public --port 5001 --host 0.0.0.0",
     "validate": "svelte-check",
     "build:index": "node build-index.js",
     "build:tailwind": "node build-tailwind.js",
