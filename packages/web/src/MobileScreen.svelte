@@ -188,4 +188,40 @@
     right: var(--dim-content-right);
     background-color: var(--theme-content-background);
   }
+
+  /* ===== 移动端布局适配（仅 MobileScreen 生效，桌面端 Screen.svelte 不受任何影响） ===== */
+  @media only screen and (max-width: 600px) {
+    .root {
+      /* 左侧图标栏收窄，让出横向空间 */
+      --dim-widget-icon-size: 40px;
+
+      /* 左侧连接树面板收窄为屏宽 40%（上限 300px，宽屏自动回落），
+         避免占用过多空间挤压右侧内容区；此处为组件内局部变量，
+         优先于 html 上的 inline style，且不写 localStorage、不影响 store 驱动 */
+      --dim-left-panel-width: min(300px, 40vw);
+
+      /* 必须联动重算内容区左边界（在局部作用域内引用上面的新变量） */
+      --dim-content-left: calc(
+        var(--dim-widget-icon-size) + var(--dim-visible-left-panel) * (var(--dim-left-panel-width))
+      );
+
+      /* 右侧面板同理收窄 */
+      --dim-right-panel-width: min(300px, 40vw);
+      --dim-content-right: calc(
+        var(--dim-visible-right-panel) * (var(--dim-right-panel-width))
+      );
+
+      /* 表单边距收窄，窄屏下给字段留出更多宽度 */
+      --dim-large-form-margin: 10px;
+    }
+
+    /* 连接类型行：原生下拉框允许收缩到剩余空间，避免挤压右侧三点按钮 */
+    :global(.connection-type-selector select) {
+      min-width: 0;
+      flex: 1;
+    }
+    :global(.connection-type-selector .driver-settings-button) {
+      flex-shrink: 0;
+    }
+  }
 </style>
