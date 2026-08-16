@@ -1,34 +1,133 @@
 <script>
-  import WidgetContainer from './widgets/WidgetContainer.svelte';
+  // 移动端专用副本组件链（MobileWidgetContainer → MobileDatabaseWidget →
+  // MobileDatabaseWidgetDetailContent → MobileSqlObjectList）：
+  // 移动端页面跳转信号只存在于该副本链中，PC 端的 WidgetContainer 等共用组件保持原样。
+  import { onMount } from 'svelte';
+  import MobileWidgetContainer from './widgets/MobileWidgetContainer.svelte';
   import WidgetIconPanel from './widgets/WidgetIconPanel.svelte';
   import {
+    activeTab,
     isFileDragActive,
-    leftPanelWidth,
     openedSnackbars,
+    openedTabs,
     selectedWidget,
-    visibleWidgetSideBar,
     visibleCommandPalette,
-    visibleTitleBar,
-    rightPanelWidget,
-    rightPanelWidth,
+    visibleWidgetSideBar,
   } from './stores';
+  import { openTableRequestSignal } from './mobileStores';
   import CommandPalette from './commands/CommandPalette.svelte';
-  import splitterDrag from './utility/splitterDrag';
   import CurrentDropDownMenu from './modals/CurrentDropDownMenu.svelte';
   import StatusBar from './widgets/StatusBar.svelte';
   import Snackbar from './widgets/Snackbar.svelte';
   import ModalLayer from './modals/ModalLayer.svelte';
   import DragAndDropFileTarget from './DragAndDropFileTarget.svelte';
   import dragDropFileTarget from './utility/dragDropFileTarget';
-  import TitleBar from './widgets/TitleBar.svelte';
+  import FontIcon from './icons/FontIcon.svelte';
   import getElectron from './utility/getElectron';
   import MultiTabsContainer from './tabpanel/MultiTabsContainer.svelte';
   import { currentThemeType } from './plugins/themes';
-  import RightWidgetContainer from './widgets/RightWidgetContainer.svelte';
 
   $: currentThemeTypeClass = $currentThemeType == 'dark' ? 'theme-type-dark' : 'theme-type-light';
 
   const isElectron = !!getElectron();
+
+  // 移动端双页面结构：
+  // - 列表页（list-page）：图标栏 + 连接树/表列表，占满整屏
+  // - 数据页（data-page）：顶部返回导航 + 数据表内容（MultiTabsContainer），占满整屏
+  // 两个页面始终挂载，仅用 display 切换，避免切页时卸载导致表树展开状态
+  // 或数据网格重新查询。
+  let isDataPage = false;
+  // 信号基线：返回列表页时记录当前计数，用户再次点击表（计数 +1）才跳转数据页，
+  // 保证点击已打开过的表也能进入数据页。
+  let signalBaseline = 0;
+
+  // 列表页中用户点击了表对象 → 进入数据页
+  $: if (!isDataPage && $openTableRequestSignal > signalBaseline) {
+    isDataPage = true;
+  }
+
+  // 数据页中所有 tab 被关闭 → 自动回到列表页
+  $: if (isDataPage && (!$openedTabs || $openedTabs.length == 0)) {
+    isDataPage = false;
+    signalBaseline = $openTableRequestSignal;
+  }
+
+  function goBackToList() {
+    isDataPage = false;
+    // 重置基线，保证下次点击（包括已打开过的表）仍能跳转到数据页
+    signalBaseline = $openTableRequestSignal;
+  }
+
+  // ---- 移动端数据网格触摸手势 ----
+  // DataGridCore 的列/行滚动由 wheel 事件驱动（on:wheel|nonpassive → handleGridWheel →
+  // scrollHorizontal/scrollVertical），但手机上没有 wheel 事件，触摸滑动在虚拟列渲染下
+  // 也无原生滚动余量（内容宽＝可见列宽），导致只能看到前几列。
+  // 这里在数据网格区域（.tableScrollContainer）上跟踪单指滑动，合成 WheelEvent 派发，
+  // 复用 PC 的滚轮路径驱动虚拟列/行滚动。仅移动端文件生效，PC 端零影响。
+  let gridTouchId = null;
+  let gridTouchLastX = 0;
+  let gridTouchLastY = 0;
+
+  function isGridTouchTarget(target) {
+    if (!(target instanceof Element)) return false;
+    const dataPage = document.querySelector('[data-testid="MobileScreen_dataPage"]');
+    if (!dataPage) return false;
+    const scrollContainer = dataPage.querySelector('.tableScrollContainer');
+    return !!scrollContainer && scrollContainer.contains(target);
+  }
+
+  function handleGridTouchStart(e) {
+    if (gridTouchId != null) return;
+    if (e.touches.length != 1) return;
+    if (!isGridTouchTarget(e.target)) return;
+    gridTouchId = e.touches[0].identifier;
+    gridTouchLastX = e.touches[0].clientX;
+    gridTouchLastY = e.touches[0].clientY;
+  }
+
+  function handleGridTouchMove(e) {
+    if (gridTouchId == null) return;
+    const touch = Array.from(e.touches).find(x => x.identifier == gridTouchId);
+    if (!touch) return;
+    const dx = touch.clientX - gridTouchLastX;
+    const dy = touch.clientY - gridTouchLastY;
+    gridTouchLastX = touch.clientX;
+    gridTouchLastY = touch.clientY;
+    if (dx == 0 && dy == 0) return;
+    try {
+      // 手指右滑（dx>0）→ deltaX 为负 → 列左移，与触控板自然滚动方向一致
+      e.target.dispatchEvent(
+        new WheelEvent('wheel', {
+          deltaX: -dx,
+          deltaY: -dy,
+          deltaMode: 0,
+          bubbles: true,
+          cancelable: true,
+        })
+      );
+    } catch {
+      // WheelEvent 构造器在旧版浏览器不可用时静默忽略
+    }
+  }
+
+  function handleGridTouchEnd(e) {
+    if (gridTouchId == null) return;
+    if (Array.from(e.touches).some(x => x.identifier == gridTouchId)) return;
+    gridTouchId = null;
+  }
+
+  onMount(() => {
+    document.addEventListener('touchstart', handleGridTouchStart, { passive: true });
+    document.addEventListener('touchmove', handleGridTouchMove, { passive: true });
+    document.addEventListener('touchend', handleGridTouchEnd, { passive: true });
+    document.addEventListener('touchcancel', handleGridTouchEnd, { passive: true });
+    return () => {
+      document.removeEventListener('touchstart', handleGridTouchStart);
+      document.removeEventListener('touchmove', handleGridTouchMove);
+      document.removeEventListener('touchend', handleGridTouchEnd);
+      document.removeEventListener('touchcancel', handleGridTouchEnd);
+    };
+  });
 </script>
 
 <div
@@ -37,44 +136,34 @@
   use:dragDropFileTarget
   on:contextmenu={e => e.preventDefault()}
 >
-  {#if $visibleTitleBar}
-    <div class="titlebar">
-      <TitleBar />
+  <!-- 列表页：图标栏 + 连接树/表列表 -->
+  <div class="list-page" class:hidden={isDataPage} data-testid="MobileScreen_listPage">
+    <div class="iconbar">
+      <WidgetIconPanel />
     </div>
-  {/if}
-  <div class="iconbar">
-    <WidgetIconPanel />
+    {#if $selectedWidget && $visibleWidgetSideBar}
+      <div class="leftpanel">
+        <MobileWidgetContainer />
+      </div>
+    {/if}
   </div>
+
+  <!-- 数据页：顶部返回导航 + 数据表内容 -->
+  <div class="data-page" class:hidden={!isDataPage} data-testid="MobileScreen_dataPage">
+    <div class="data-header">
+      <div class="back-button" on:click={goBackToList} data-testid="MobileScreen_backToList">
+        <FontIcon icon="icon arrow-left" />
+      </div>
+      <div class="data-title">{($activeTab && $activeTab.title) || ''}</div>
+    </div>
+    <div class="tabs-container">
+      <MultiTabsContainer />
+    </div>
+  </div>
+
   <div class="statusbar">
     <StatusBar />
   </div>
-  {#if $selectedWidget && $visibleWidgetSideBar}
-    <div class="leftpanel">
-      <WidgetContainer />
-    </div>
-  {/if}
-  <div class="tabs-container">
-    <MultiTabsContainer />
-  </div>
-  {#if $selectedWidget && $visibleWidgetSideBar}
-    <div
-      class="horizontal-split-handle left-splitter"
-      use:splitterDrag={'clientX'}
-      on:resizeSplitter={e => leftPanelWidth.update(x => x + e.detail)}
-    />
-  {/if}
-  {#if $rightPanelWidget}
-    <div
-      class="horizontal-split-handle right-splitter"
-      use:splitterDrag={'clientX'}
-      on:resizeSplitter={e => rightPanelWidth.update(x => x - e.detail)}
-    />
-  {/if}
-  {#if $rightPanelWidget}
-    <div class="rightpanel">
-      <RightWidgetContainer />
-    </div>
-  {/if}
   {#if $visibleCommandPalette}
     <div class="commads">
       <CommandPalette />
@@ -96,15 +185,117 @@
   .root {
     color: var(--theme-generic-font);
   }
-  .iconbar {
+
+  /* 列表页：图标栏 + 左侧面板，占满状态栏以上的整屏宽度 */
+  .list-page {
     position: fixed;
-    display: flex;
+    top: 0;
     left: 0;
-    top: var(--dim-header-top);
+    right: 0;
     bottom: var(--dim-statusbar-height);
+    display: flex;
+  }
+  .list-page.hidden {
+    display: none;
+  }
+  /* 数据页不能用 display:none 隐藏：表行 pointerup 会先于页面切换信号打开新 tab
+     （行内 handler 先于 document 委托冒泡），DataGridCore 随之挂载。
+     Svelte 4 的 bind:clientWidth 用 iframe resize hack 测量，挂载时祖先 display:none
+     会测得 0，且页面恢复显示后移动端浏览器不触发 iframe 内部 resize，
+     导致 gridScrollAreaWidth 为负、可见列数为 0（只剩行号列和表头首格箭头）。
+     改用 visibility 隐藏：元素保持布局尺寸，任何时机挂载的网格都能测得正确宽高。 */
+  .data-page.hidden {
+    visibility: hidden;
+    pointer-events: none;
+  }
+  /* TabContent（tabpanel/TabContent.svelte）自身声明了 visibility:visible
+     （PC 端用它隐藏非活动 tab 同时保持挂载），会穿透祖先的 visibility:hidden，
+     导致返回列表页后活动 tab 的网格内容仍浮在列表页上方。
+     数据页隐藏时强制所有 TabContent 隐藏；仍保持布局尺寸，不影响网格测量。 */
+  :global(.data-page.hidden [data-testid^='TabContent_']) {
+    visibility: hidden !important;
+  }
+  .iconbar {
     width: var(--dim-widget-icon-size);
+    display: flex;
     background: var(--theme-widget-panel-background);
   }
+  .leftpanel {
+    flex: 1;
+    min-width: 0;
+    background-color: var(--theme-sidebar-background);
+    color: var(--theme-sidebar-foreground);
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* 数据页：顶部导航 + 内容区，占满状态栏以上的整屏 */
+  .data-page {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: var(--dim-statusbar-height);
+    background-color: var(--theme-content-background);
+  }
+  .data-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    background-color: var(--theme-tabs-panel-background);
+    border-bottom: var(--theme-tabs-panel-border);
+    z-index: 10;
+  }
+  .back-button {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20pt;
+    cursor: pointer;
+  }
+  .back-button:hover {
+    color: var(--theme-generic-font-hover);
+  }
+  .data-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-right: 10px;
+  }
+  .tabs-container {
+    position: absolute;
+    top: 44px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--theme-content-background);
+  }
+
+  /* 移动端数据页：隐藏 DataGrid 的左侧面板（Columns/Filters/References/Macros）及其分割
+     把手，使数据网格占满整屏。选择器双重锚定：style 含 min-width 的 .child1 是
+     HorizontalSplitter 的横向左侧区域（VerticalSplitter 纵向布局用 min-height，不会误伤）；
+     :has() 要求内部含 DataGrid_itemColumns，保证只命中 DataGrid 的列管理面板
+     （QueryTab 等其他 HorizontalSplitter 不含该 testid，不受影响）。
+     仅移动端数据页生效：PC 端不渲染 MobileScreen，这些规则不匹配任何元素。 */
+  :global([data-testid='MobileScreen_dataPage'] .child1[style*='min-width']:has([data-testid='DataGrid_itemColumns'])) {
+    display: none !important;
+  }
+  :global(
+    [data-testid='MobileScreen_dataPage']
+      .child1[style*='min-width']:has([data-testid='DataGrid_itemColumns'])
+      + .horizontal-split-handle
+  ) {
+    display: none !important;
+  }
+
   .statusbar {
     position: fixed;
     background: var(--theme-statusbar-background);
@@ -114,114 +305,15 @@
     bottom: 0;
     display: flex;
   }
-  .leftpanel {
-    position: fixed;
-    top: var(--dim-header-top);
-    left: var(--dim-widget-icon-size);
-    bottom: var(--dim-statusbar-height);
-    width: var(--dim-left-panel-width);
-    background-color: var(--theme-sidebar-background);
-    color: var(--theme-sidebar-foreground);
-    display: flex;
-    border-right: var(--theme-sidebar-border);
-  }
-
-  .rightpanel {
-    position: fixed;
-    top: var(--dim-header-top);
-    right: 0;
-    bottom: var(--dim-statusbar-height);
-    width: var(--dim-right-panel-width);
-    background-color: var(--theme-altsidebar-background);
-    color: var(--theme-altsidebar-foreground);
-    display: flex;
-    border-left: var(--theme-altsidebar-border);
-  }
   .commads {
     position: fixed;
-    top: var(--dim-header-top);
-    left: var(--dim-widget-icon-size);
-  }
-  .toolbar {
-    position: fixed;
-    top: var(--dim-toolbar-top);
-    height: var(--dim-toolbar-height);
+    top: 44px;
     left: 0;
-    right: 0;
-    background: var(--theme-toolstrip-background);
   }
-
-  .left-splitter {
-    position: absolute;
-    top: var(--dim-header-top);
-    bottom: var(--dim-statusbar-height);
-    left: calc(var(--dim-widget-icon-size) + var(--dim-left-panel-width));
-  }
-
-  .right-splitter {
-    position: absolute;
-    top: var(--dim-header-top);
-    bottom: var(--dim-statusbar-height);
-    right: var(--dim-content-right);
-  }
-
   .snackbar-container {
     z-index: 1000;
     position: fixed;
     right: 0;
     bottom: var(--dim-statusbar-height);
-  }
-
-  .titlebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: var(--dim-titlebar-height);
-  }
-
-  .tabs-container {
-    position: fixed;
-    top: var(--dim-header-top);
-    left: var(--dim-content-left);
-    bottom: var(--dim-statusbar-height);
-    right: var(--dim-content-right);
-    background-color: var(--theme-content-background);
-  }
-
-  /* ===== 移动端布局适配（仅 MobileScreen 生效，桌面端 Screen.svelte 不受任何影响） ===== */
-  @media only screen and (max-width: 600px) {
-    .root {
-      /* 左侧图标栏收窄，让出横向空间 */
-      --dim-widget-icon-size: 40px;
-
-      /* 左侧连接树面板收窄为屏宽 40%（上限 300px，宽屏自动回落），
-         避免占用过多空间挤压右侧内容区；此处为组件内局部变量，
-         优先于 html 上的 inline style，且不写 localStorage、不影响 store 驱动 */
-      --dim-left-panel-width: min(300px, 40vw);
-
-      /* 必须联动重算内容区左边界（在局部作用域内引用上面的新变量） */
-      --dim-content-left: calc(
-        var(--dim-widget-icon-size) + var(--dim-visible-left-panel) * (var(--dim-left-panel-width))
-      );
-
-      /* 右侧面板同理收窄 */
-      --dim-right-panel-width: min(300px, 40vw);
-      --dim-content-right: calc(
-        var(--dim-visible-right-panel) * (var(--dim-right-panel-width))
-      );
-
-      /* 表单边距收窄，窄屏下给字段留出更多宽度 */
-      --dim-large-form-margin: 10px;
-    }
-
-    /* 连接类型行：原生下拉框允许收缩到剩余空间，避免挤压右侧三点按钮 */
-    :global(.connection-type-selector select) {
-      min-width: 0;
-      flex: 1;
-    }
-    :global(.connection-type-selector .driver-settings-button) {
-      flex-shrink: 0;
-    }
   }
 </style>

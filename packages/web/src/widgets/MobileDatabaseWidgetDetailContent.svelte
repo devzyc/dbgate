@@ -1,0 +1,141 @@
+<script lang="ts">
+  // 移动端专用副本：与 DatabaseWidgetDetailContent.svelte 保持一致，
+  // 仅将 SqlObjectList 替换为 MobileSqlObjectList（点击表时递增移动端页面跳转信号）。
+  import { findEngineDriver } from 'dbgate-tools';
+  import { currentDatabase, extensions, pinnedDatabases, pinnedTables, selectedWidget } from '../stores';
+  import { useConnectionInfo } from '../utility/metadataLoaders';
+
+  import PinnedObjectsList from './PinnedObjectsList.svelte';
+  import ErrorInfo from '../elements/ErrorInfo.svelte';
+  import WidgetsInnerContainer from './WidgetsInnerContainer.svelte';
+
+  import WidgetColumnBarItem from './WidgetColumnBarItem.svelte';
+  import MobileSqlObjectList from './MobileSqlObjectList.svelte';
+  import RedisKeysTree from './RedisKeysTree.svelte';
+  import RestApiContentWidget from './RestApiContentWidget.svelte';
+  import _ from 'lodash';
+  import FocusedConnectionInfoWidget from './FocusedConnectionInfoWidget.svelte';
+  import { _t } from '../translations';
+  import FormStyledButton from '../buttons/FormStyledButton.svelte';
+
+  export let domSqlObjectList = null;
+  export let showCloudConnection;
+
+  $: conid = $currentDatabase?.connection?._id;
+  $: connection = useConnectionInfo({ conid });
+  $: driver = findEngineDriver($connection, $extensions);
+  $: singleDatabase = $currentDatabase?.connection?.singleDatabase;
+  $: database = $currentDatabase?.name;
+
+  $: correctCloudStatus =
+    !conid ||
+    (!showCloudConnection && !conid?.startsWith('cloud://')) ||
+    (showCloudConnection && conid?.startsWith('cloud://'));
+</script>
+
+<WidgetColumnBarItem
+  title={_t('widget.pinned', { defaultMessage: 'Pinned' })}
+  name="pinned"
+  height="15%"
+  skip={!_.compact($pinnedDatabases).length &&
+    !$pinnedTables.some(x => x && x.conid == conid && x.database == $currentDatabase?.name)}
+  positiveCondition={correctCloudStatus}
+>
+  <PinnedObjectsList />
+</WidgetColumnBarItem>
+
+<WidgetColumnBarItem
+  title={driver?.databaseEngineTypes?.includes('document')
+    ? _t('widget.collectionsContainers', { defaultMessage: 'Collections/containers' })
+    : _t('widget.tablesViewsFunctions', { defaultMessage: 'Tables, views, functions' })}
+  name="dbObjectsSql"
+  skip={!(
+    conid &&
+    (database || singleDatabase) &&
+    (driver?.databaseEngineTypes?.includes('sql') || driver?.databaseEngineTypes?.includes('document'))
+  )}
+  positiveCondition={correctCloudStatus}
+>
+  <MobileSqlObjectList {conid} {database} bind:this={domSqlObjectList} />
+</WidgetColumnBarItem>
+
+<WidgetColumnBarItem
+  title={_t('widget.keys', { defaultMessage: 'Keys' })}
+  name="dbObjectsKeyValue"
+  skip={!(conid && (database || singleDatabase) && driver?.databaseEngineTypes?.includes('keyvalue'))}
+  positiveCondition={correctCloudStatus}
+>
+  <RedisKeysTree {conid} {database} treeKeySeparator={$connection?.treeKeySeparator || ':'} />
+</WidgetColumnBarItem>
+
+<WidgetColumnBarItem
+  title={_t('widget.endpoints', { defaultMessage: 'Endpoints' })}
+  name="endpoints"
+  skip={!(conid && (database || singleDatabase) && driver?.databaseEngineTypes?.includes('rest'))}
+  positiveCondition={correctCloudStatus}
+>
+  <RestApiContentWidget {conid} />
+</WidgetColumnBarItem>
+
+<WidgetColumnBarItem
+  title={_t('widget.databaseContent', { defaultMessage: 'Database content' })}
+  name="dbObjectsFocused"
+  skip={conid && (database || singleDatabase)}
+  positiveCondition={correctCloudStatus}
+>
+  <WidgetsInnerContainer>
+    <FocusedConnectionInfoWidget {conid} {database} connection={$connection} />
+
+    <ErrorInfo message="Database not selected" icon="img alert" />
+  </WidgetsInnerContainer>
+</WidgetColumnBarItem>
+
+<WidgetColumnBarItem
+  title={_t('widget.databaseContent', { defaultMessage: 'Database content' })}
+  name="dbObjectsError"
+  skip={!(conid && (database || singleDatabase) && !driver)}
+  positiveCondition={correctCloudStatus}
+>
+  <WidgetsInnerContainer>
+    <FocusedConnectionInfoWidget {conid} {database} connection={$connection} />
+
+    <ErrorInfo
+      message={_t('error.driverNotFound', { defaultMessage: 'Invalid database connection, driver not found' })}
+    />
+  </WidgetsInnerContainer>
+</WidgetColumnBarItem>
+
+<WidgetColumnBarItem
+  title={_t('widget.databaseContent', { defaultMessage: 'Database content' })}
+  name="incorrectClaudStatus"
+  height="15%"
+  skip={correctCloudStatus}
+>
+  <WidgetsInnerContainer>
+    <ErrorInfo
+      message={showCloudConnection
+        ? _t('error.selectedNotCloudConnection', { defaultMessage: 'Selected connection is not from DbGate cloud' })
+        : _t('error.selectedCloudConnection', { defaultMessage: 'Selected connection is from DbGate cloud' })}
+    />
+
+    <div class="incorrect-cloud-status-wrapper">
+      <FormStyledButton
+        value={`Show database content`}
+        skipWidth
+        on:click={() => {
+          $selectedWidget = conid?.startsWith('cloud://') ? 'cloud-private' : 'database';
+        }}
+      />
+    </div>
+  </WidgetsInnerContainer>
+</WidgetColumnBarItem>
+
+<style>
+  .incorrect-cloud-status-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    margin-top: 10px;
+  }
+</style>
