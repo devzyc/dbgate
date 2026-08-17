@@ -1,6 +1,6 @@
 <script lang="ts">
   // 移动端专用副本：与 DatabaseWidget.svelte 保持一致，
-  // 仅将 DatabaseWidgetDetailContent 替换为 MobileDatabaseWidgetDetailContent
+  // 仅将 DatabaseWidgetDetailContent 替换为 MbDatabaseWidgetDetailContent
   // （其内部 SqlObjectList 点击时递增移动端页面跳转信号）。
   import { useCloudContentList, useConfig, useConnectionInfo } from '../utility/metadataLoaders';
 
@@ -11,7 +11,7 @@
   import SingleConnectionDatabaseList from './SingleConnectionDatabaseList.svelte';
   import _ from 'lodash';
   import { _t } from '../translations';
-  import MobileDatabaseWidgetDetailContent from './MobileDatabaseWidgetDetailContent.svelte';
+  import MbDatabaseWidgetDetailContent from './MbDatabaseWidgetDetailContent.svelte';
 
   export let hidden = false;
   let domSqlObjectList = null;
@@ -41,5 +41,5 @@
     </WidgetColumnBarItem>
   {/if}
 
-  <MobileDatabaseWidgetDetailContent bind:domSqlObjectList showCloudConnection={false} />
+  <MbDatabaseWidgetDetailContent bind:domSqlObjectList showCloudConnection={false} />
 </WidgetColumnBar>

@@ -1,9 +1,9 @@
 <script lang="ts">
   // 移动端专用副本：与 WidgetContainer.svelte 保持一致，
-  // 仅将 DatabaseWidget 替换为 MobileDatabaseWidget（含移动端页面跳转信号）。
+  // 仅将 DatabaseWidget 替换为 MbDatabaseWidget（含移动端页面跳转信号）。
   import { visibleSelectedWidget } from '../stores';
   import ArchiveWidget from './ArchiveWidget.svelte';
-  import MobileDatabaseWidget from './MobileDatabaseWidget.svelte';
+  import MbDatabaseWidget from './MbDatabaseWidget.svelte';
   import FilesWidget from './FilesWidget.svelte';
   import PluginsWidget from './PluginsWidget.svelte';
   import HistoryWidget from './HistoryWidget.svelte';
@@ -17,7 +17,7 @@
 </script>
 
 {#if hasPermission('widgets/database')}
-  <MobileDatabaseWidget hidden={$visibleSelectedWidget != 'database'} />
+  <MbDatabaseWidget hidden={$visibleSelectedWidget != 'database'} />
 {/if}
 {#if $visibleSelectedWidget == 'file' && hasPermission('widgets/file')}
   <FilesWidget />

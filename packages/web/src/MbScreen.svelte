@@ -1,9 +1,9 @@
 <script>
-  // 移动端专用副本组件链（MobileWidgetContainer → MobileDatabaseWidget →
-  // MobileDatabaseWidgetDetailContent → MobileSqlObjectList）：
+  // 移动端专用副本组件链（MbWidgetContainer → MbDatabaseWidget →
+  // MbDatabaseWidgetDetailContent → MbSqlObjectList）：
   // 移动端页面跳转信号只存在于该副本链中，PC 端的 WidgetContainer 等共用组件保持原样。
   import { onMount } from 'svelte';
-  import MobileWidgetContainer from './widgets/MobileWidgetContainer.svelte';
+  import MbWidgetContainer from './widgets/MbWidgetContainer.svelte';
   import WidgetIconPanel from './widgets/WidgetIconPanel.svelte';
   import {
     activeTab,
@@ -14,7 +14,7 @@
     visibleCommandPalette,
     visibleWidgetSideBar,
   } from './stores';
-  import { openTableRequestSignal } from './mobileStores';
+  import { openTableRequestSignal } from './mbStores';
   import CommandPalette from './commands/CommandPalette.svelte';
   import CurrentDropDownMenu from './modals/CurrentDropDownMenu.svelte';
   import StatusBar from './widgets/StatusBar.svelte';
@@ -70,7 +70,7 @@
 
   function isGridTouchTarget(target) {
     if (!(target instanceof Element)) return false;
-    const dataPage = document.querySelector('[data-testid="MobileScreen_dataPage"]');
+    const dataPage = document.querySelector('[data-testid="MbScreen_dataPage"]');
     if (!dataPage) return false;
     const scrollContainer = dataPage.querySelector('.tableScrollContainer');
     return !!scrollContainer && scrollContainer.contains(target);
@@ -137,21 +137,21 @@
   on:contextmenu={e => e.preventDefault()}
 >
   <!-- 列表页：图标栏 + 连接树/表列表 -->
-  <div class="list-page" class:hidden={isDataPage} data-testid="MobileScreen_listPage">
+  <div class="list-page" class:hidden={isDataPage} data-testid="MbScreen_listPage">
     <div class="iconbar">
       <WidgetIconPanel />
     </div>
     {#if $selectedWidget && $visibleWidgetSideBar}
       <div class="leftpanel">
-        <MobileWidgetContainer />
+        <MbWidgetContainer />
       </div>
     {/if}
   </div>
 
   <!-- 数据页：顶部返回导航 + 数据表内容 -->
-  <div class="data-page" class:hidden={!isDataPage} data-testid="MobileScreen_dataPage">
+  <div class="data-page" class:hidden={!isDataPage} data-testid="MbScreen_dataPage">
     <div class="data-header">
-      <div class="back-button" on:click={goBackToList} data-testid="MobileScreen_backToList">
+      <div class="back-button" on:click={goBackToList} data-testid="MbScreen_backToList">
         <FontIcon icon="icon arrow-left" />
       </div>
       <div class="data-title">{($activeTab && $activeTab.title) || ''}</div>
@@ -284,12 +284,12 @@
      HorizontalSplitter 的横向左侧区域（VerticalSplitter 纵向布局用 min-height，不会误伤）；
      :has() 要求内部含 DataGrid_itemColumns，保证只命中 DataGrid 的列管理面板
      （QueryTab 等其他 HorizontalSplitter 不含该 testid，不受影响）。
-     仅移动端数据页生效：PC 端不渲染 MobileScreen，这些规则不匹配任何元素。 */
-  :global([data-testid='MobileScreen_dataPage'] .child1[style*='min-width']:has([data-testid='DataGrid_itemColumns'])) {
+     仅移动端数据页生效：PC 端不渲染 MbScreen，这些规则不匹配任何元素。 */
+  :global([data-testid='MbScreen_dataPage'] .child1[style*='min-width']:has([data-testid='DataGrid_itemColumns'])) {
     display: none !important;
   }
   :global(
-    [data-testid='MobileScreen_dataPage']
+    [data-testid='MbScreen_dataPage']
       .child1[style*='min-width']:has([data-testid='DataGrid_itemColumns'])
       + .horizontal-split-handle
   ) {

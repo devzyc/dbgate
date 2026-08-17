@@ -7,7 +7,7 @@
 
   import PluginsProvider from './plugins/PluginsProvider.svelte';
   import Screen from './Screen.svelte';
-  import MobileScreen from './MobileScreen.svelte';
+  import MbScreen from './MbScreen.svelte';
   import { loadingPluginStore, subscribeApiDependendStores } from './stores';
   import { setAppLoaded } from './utility/appLoadManager';
   import ErrorHandler from './utility/ErrorHandler.svelte';
@@ -33,24 +33,24 @@
 
   export let isAdminPage = false;
 
-  // 移动端分流：视口宽度 <= 600px 时渲染 MobileScreen（移动端专用页面），
+  // 移动端分流：视口宽度 <= 600px 时渲染 MbScreen（移动端专用页面），
   // 桌面端始终走原 Screen，行为完全不变。
-  let isMobileView = false;
-  let mobileViewMediaQuery: MediaQueryList | null = null;
+  let isMbView = false;
+  let mbViewMediaQuery: MediaQueryList | null = null;
 
-  function handleMobileViewChange(ev: MediaQueryListEvent) {
-    isMobileView = ev.matches;
+  function handleMbViewChange(ev: MediaQueryListEvent) {
+    isMbView = ev.matches;
   }
 
   onMount(() => {
-    mobileViewMediaQuery = window.matchMedia('(max-width: 600px)');
-    isMobileView = mobileViewMediaQuery.matches;
-    mobileViewMediaQuery.addEventListener('change', handleMobileViewChange);
+    mbViewMediaQuery = window.matchMedia('(max-width: 600px)');
+    isMbView = mbViewMediaQuery.matches;
+    mbViewMediaQuery.addEventListener('change', handleMbViewChange);
   });
 
   onDestroy(() => {
-    mobileViewMediaQuery?.removeEventListener('change', handleMobileViewChange);
-    mobileViewMediaQuery = null;
+    mbViewMediaQuery?.removeEventListener('change', handleMbViewChange);
+    mbViewMediaQuery = null;
   });
 
   let loadedApi = false;
@@ -129,8 +129,8 @@
   {#if loadedPlugins}
     <OpenTabsOnStartup />
     <SettingsListener />
-    {#if isMobileView}
-      <MobileScreen />
+    {#if isMbView}
+      <MbScreen />
     {:else}
       <Screen />
     {/if}

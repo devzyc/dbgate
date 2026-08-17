@@ -1,7 +1,7 @@
 <script lang="ts" context="module">
   // 移动端专用副本：与 SqlObjectList.svelte 保持一致，
   // 仅在用户点击表对象（handleObjectClick）时递增 openTableRequestSignal，
-  // 供 MobileScreen 做列表页 → 数据页跳转；原 SqlObjectList.svelte 保持原样。
+  // 供 MbScreen 做列表页 → 数据页跳转；原 SqlObjectList.svelte 保持原样。
   import _ from 'lodash';
   function generateObjectList(seed = 0) {
     const counts = [1000, 1200, 1100, 2100, 720];
@@ -32,7 +32,7 @@
   import AppObjectList from '../appobj/AppObjectList.svelte';
   // 移动端副本模块：与 DatabaseObjectAppObject 一致，额外在 pointerup 时直接打开 tab
   //（移动端 click 合成不可靠，见副本内 handleObjectRowPointerUp 注释）。
-  import * as databaseObjectAppObject from '../appobj/MobileDatabaseObjectAppObject.svelte';
+  import * as databaseObjectAppObject from '../appobj/MbDatabaseObjectAppObject.svelte';
   import SubTableColumnList from '../appobj/SubTableColumnList.svelte';
   import { chevronExpandIcon } from '../icons/expandIcons';
   import ErrorInfo from '../elements/ErrorInfo.svelte';
@@ -51,7 +51,7 @@
     getSelectedDatabaseObjectAppObject,
     selectedDatabaseObjectAppObject,
   } from '../stores';
-  import { openTableRequestSignal } from '../mobileStores';
+  import { openTableRequestSignal } from '../mbStores';
   import newQuery from '../query/newQuery';
   import runCommand from '../commands/runCommand';
   import { apiCall } from '../utility/api';
@@ -82,7 +82,7 @@
   // 列子项无 .expand-icon 不误触发。
   function handleObjectRowClick(e) {
     if (e.button !== 0) return;
-    const container = document.querySelector('[data-testid="MobileSqlObjectList_container"]');
+    const container = document.querySelector('[data-testid="MbSqlObjectList_container"]');
     if (!container || !container.contains(e.target)) return;
     if (e.target.closest('.expand-icon, .pin, .pin-active, .unpin, .status')) return;
     const row = e.target.closest('.main');
@@ -369,7 +369,7 @@
   <WidgetsInnerContainer
     bind:this={domContainer}
     hideContent={differentFocusedDb}
-    data-testid="MobileSqlObjectList_container"
+    data-testid="MbSqlObjectList_container"
   >
     {#if (isLoadingStructure && $objects) || !$objects}
       <LoadingInfo

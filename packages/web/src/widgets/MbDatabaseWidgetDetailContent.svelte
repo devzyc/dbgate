@@ -1,6 +1,6 @@
 <script lang="ts">
   // 移动端专用副本：与 DatabaseWidgetDetailContent.svelte 保持一致，
-  // 仅将 SqlObjectList 替换为 MobileSqlObjectList（点击表时递增移动端页面跳转信号）。
+  // 仅将 SqlObjectList 替换为 MbSqlObjectList（点击表时递增移动端页面跳转信号）。
   import { findEngineDriver } from 'dbgate-tools';
   import { currentDatabase, extensions, pinnedDatabases, pinnedTables, selectedWidget } from '../stores';
   import { useConnectionInfo } from '../utility/metadataLoaders';
@@ -10,7 +10,7 @@
   import WidgetsInnerContainer from './WidgetsInnerContainer.svelte';
 
   import WidgetColumnBarItem from './WidgetColumnBarItem.svelte';
-  import MobileSqlObjectList from './MobileSqlObjectList.svelte';
+  import MbSqlObjectList from './MbSqlObjectList.svelte';
   import RedisKeysTree from './RedisKeysTree.svelte';
   import RestApiContentWidget from './RestApiContentWidget.svelte';
   import _ from 'lodash';
@@ -56,7 +56,7 @@
   )}
   positiveCondition={correctCloudStatus}
 >
-  <MobileSqlObjectList {conid} {database} bind:this={domSqlObjectList} />
+  <MbSqlObjectList {conid} {database} bind:this={domSqlObjectList} />
 </WidgetColumnBarItem>
 
 <WidgetColumnBarItem

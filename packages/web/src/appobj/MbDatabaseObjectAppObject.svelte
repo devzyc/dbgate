@@ -1089,7 +1089,7 @@
   export let passProps;
 
   // 移动端行主体点按处理（pointerup）：直接打开/激活对应 tab。
-  // 不用 click：移动端触摸点按时，MobileScreen 会在 pointerup 中切到数据页并隐藏列表页
+  // 不用 click：移动端触摸点按时，MbScreen 会在 pointerup 中切到数据页并隐藏列表页
   // （display:none），浏览器随后合成的 click 因目标已隐藏而不派发，导致 tab 打不开；
   // pointerup 在 DOM 隐藏前触发，稳定可靠。若 click 仍派发（如鼠标操作），
   // handleDatabaseObjectClick 对已激活的 tab 是幂等的（match 后直接 return），无副作用。
