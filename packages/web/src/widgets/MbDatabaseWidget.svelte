@@ -4,7 +4,7 @@
   // （其内部 SqlObjectList 点击时递增移动端页面跳转信号）。
   import { useCloudContentList, useConfig, useConnectionInfo } from '../utility/metadataLoaders';
 
-  import ConnectionList from './ConnectionList.svelte';
+  import MbConnectionList from './MbConnectionList.svelte';
 
   import WidgetColumnBar from './WidgetColumnBar.svelte';
   import WidgetColumnBarItem from './WidgetColumnBarItem.svelte';
@@ -32,7 +32,7 @@
       height="35%"
       storeHeight
     >
-      <ConnectionList
+      <MbConnectionList
         passProps={{
           onFocusSqlObjectList: () => domSqlObjectList.focus(),
           cloudContentList: $cloudContentList,

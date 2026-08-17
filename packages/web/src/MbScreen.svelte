@@ -3,18 +3,21 @@
   // MbDatabaseWidgetDetailContent → MbSqlObjectList）：
   // 移动端页面跳转信号只存在于该副本链中，PC 端的 WidgetContainer 等共用组件保持原样。
   import { onMount } from 'svelte';
+  import MbSchemaList from './widgets/MbSchemaList.svelte';
   import MbWidgetContainer from './widgets/MbWidgetContainer.svelte';
   import WidgetIconPanel from './widgets/WidgetIconPanel.svelte';
   import {
     activeTab,
+    currentDatabase,
     isFileDragActive,
+    openedConnections,
     openedSnackbars,
     openedTabs,
     selectedWidget,
     visibleCommandPalette,
     visibleWidgetSideBar,
   } from './stores';
-  import { openTableRequestSignal } from './mbStores';
+  import { openTableRequestSignal, openTabRequestSignal } from './mbStores';
   import CommandPalette from './commands/CommandPalette.svelte';
   import CurrentDropDownMenu from './modals/CurrentDropDownMenu.svelte';
   import StatusBar from './widgets/StatusBar.svelte';
@@ -32,7 +35,7 @@
   const isElectron = !!getElectron();
 
   // 移动端双页面结构：
-  // - 列表页（list-page）：图标栏 + 连接树/表列表，占满整屏
+  // - 列表页（list-page）：Schemas 列表，占满整屏
   // - 数据页（data-page）：顶部返回导航 + 数据表内容（MultiTabsContainer），占满整屏
   // 两个页面始终挂载，仅用 display 切换，避免切页时卸载导致表树展开状态
   // 或数据网格重新查询。
@@ -41,21 +44,41 @@
   // 保证点击已打开过的表也能进入数据页。
   let signalBaseline = 0;
 
-  // 列表页中用户点击了表对象 → 进入数据页
-  $: if (!isDataPage && $openTableRequestSignal > signalBaseline) {
+  // 列表页中用户点击了表对象，或打开了非表类 tab（如新建连接）→ 进入数据页
+  $: if (!isDataPage && $openTableRequestSignal + $openTabRequestSignal > signalBaseline) {
     isDataPage = true;
   }
 
   // 数据页中所有 tab 被关闭 → 自动回到列表页
   $: if (isDataPage && (!$openedTabs || $openedTabs.length == 0)) {
     isDataPage = false;
-    signalBaseline = $openTableRequestSignal;
+    signalBaseline = $openTableRequestSignal + $openTabRequestSignal;
+  }
+
+  // 连接成功后自动关闭 ConnectionTab 并跳转到列表页（显示 Schemas 列表）
+  // 监听 $openedConnections 新增连接（而非 $currentDatabase，因为新连接可能无 defaultDatabase）
+  let prevOpenedConIds = new Set($openedConnections);
+  $: {
+    const newConIds = new Set($openedConnections);
+    const newlyOpened = [...newConIds].filter(id => !prevOpenedConIds.has(id));
+    if (newlyOpened.length > 0) {
+      // 有连接刚打开 → 关闭当前 ConnectionTab（如果有）
+      if (isDataPage && $activeTab?.tabComponent == 'ConnectionTab') {
+        openedTabs.update(tabs =>
+          tabs.map(t => (t.tabid == $activeTab.tabid ? { ...t, closedTime: new Date().toISOString() } : t))
+        );
+      }
+      // 跳转到列表页（MbSchemaList 会因 conid 有值而显示数据库列表）
+      isDataPage = false;
+      signalBaseline = $openTableRequestSignal + $openTabRequestSignal;
+    }
+    prevOpenedConIds = newConIds;
   }
 
   function goBackToList() {
     isDataPage = false;
-    // 重置基线，保证下次点击（包括已打开过的表）仍能跳转到数据页
-    signalBaseline = $openTableRequestSignal;
+    // 重置基线，保证下次点击（包括已打开过的表/连接 tab）仍能跳转到数据页
+    signalBaseline = $openTableRequestSignal + $openTabRequestSignal;
   }
 
   // ---- 移动端数据网格触摸手势 ----
@@ -136,15 +159,19 @@
   use:dragDropFileTarget
   on:contextmenu={e => e.preventDefault()}
 >
-  <!-- 列表页：图标栏 + 连接树/表列表 -->
+  <!-- 列表页：已选数据库或有已打开连接时显示 Schemas 列表，否则显示原连接管理 UI 以便新建/选择连接 -->
   <div class="list-page" class:hidden={isDataPage} data-testid="MbScreen_listPage">
-    <div class="iconbar">
-      <WidgetIconPanel />
-    </div>
-    {#if $selectedWidget && $visibleWidgetSideBar}
-      <div class="leftpanel">
-        <MbWidgetContainer />
+    {#if $currentDatabase || $openedConnections.length > 0}
+      <MbSchemaList />
+    {:else}
+      <div class="iconbar">
+        <WidgetIconPanel />
       </div>
+      {#if $selectedWidget && $visibleWidgetSideBar}
+        <div class="leftpanel">
+          <MbWidgetContainer />
+        </div>
+      {/if}
     {/if}
   </div>
 
@@ -186,7 +213,7 @@
     color: var(--theme-generic-font);
   }
 
-  /* 列表页：图标栏 + 左侧面板，占满状态栏以上的整屏宽度 */
+  /* 列表页：Schemas 列表 或 原连接管理 UI，占满状态栏以上的整屏 */
   .list-page {
     position: fixed;
     top: 0;
