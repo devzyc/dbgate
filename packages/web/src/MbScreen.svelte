@@ -4,6 +4,7 @@
   // 移动端页面跳转信号只存在于该副本链中，PC 端的 WidgetContainer 等共用组件保持原样。
   import { onMount } from 'svelte';
   import MbSchemaList from './widgets/MbSchemaList.svelte';
+  import MbTableList from './widgets/MbTableList.svelte';
   import MbWidgetContainer from './widgets/MbWidgetContainer.svelte';
   import WidgetIconPanel from './widgets/WidgetIconPanel.svelte';
   import {
@@ -35,7 +36,7 @@
   const isElectron = !!getElectron();
 
   // 移动端双页面结构：
-  // - 列表页（list-page）：Schemas 列表，占满整屏
+  // - 列表页（list-page）：Schemas 列表 或 Tables 列表，占满整屏
   // - 数据页（data-page）：顶部返回导航 + 数据表内容（MultiTabsContainer），占满整屏
   // 两个页面始终挂载，仅用 display 切换，避免切页时卸载导致表树展开状态
   // 或数据网格重新查询。
@@ -43,6 +44,19 @@
   // 信号基线：返回列表页时记录当前计数，用户再次点击表（计数 +1）才跳转数据页，
   // 保证点击已打开过的表也能进入数据页。
   let signalBaseline = 0;
+
+  // 列表页内导航：selectedDatabase 为 null 时显示 Schemas 列表（MbSchemaList），
+  // 有值时显示该数据库下的 Tables 列表（MbTableList）。
+  // 与 $currentDatabase 解耦：currentDatabase 表示连接级选中状态，
+  // selectedDatabase 表示用户在列表页内显式点入了哪个数据库。
+  let selectedDatabase = null;
+
+  // 判断 currentDatabase 引用的连接是否实际已打开：
+  // currentDatabase 从 localStorage 恢复（writableWithStorage），但浏览器返回/前进
+  // 或刷新时连接并未重新建立，此时 openedConnections 为空，需回退到连接管理 UI。
+  $: currentDatabaseConnectionOpen =
+    $currentDatabase?.connection?._id != null &&
+    $openedConnections.includes($currentDatabase.connection._id);
 
   // 列表页中用户点击了表对象，或打开了非表类 tab（如新建连接）→ 进入数据页
   $: if (!isDataPage && $openTableRequestSignal + $openTabRequestSignal > signalBaseline) {
@@ -79,6 +93,11 @@
     isDataPage = false;
     // 重置基线，保证下次点击（包括已打开过的表/连接 tab）仍能跳转到数据页
     signalBaseline = $openTableRequestSignal + $openTabRequestSignal;
+  }
+
+  // 列表页内从 Tables 列表返回 Schemas 列表
+  function goBackToSchemas() {
+    selectedDatabase = null;
   }
 
   // ---- 移动端数据网格触摸手势 ----
@@ -159,10 +178,23 @@
   use:dragDropFileTarget
   on:contextmenu={e => e.preventDefault()}
 >
-  <!-- 列表页：已选数据库或有已打开连接时显示 Schemas 列表，否则显示原连接管理 UI 以便新建/选择连接 -->
+  <!-- 列表页：已选数据库或有已打开连接时显示 Schemas/Tables 列表，否则显示原连接管理 UI -->
   <div class="list-page" class:hidden={isDataPage} data-testid="MbScreen_listPage">
-    {#if $currentDatabase || $openedConnections.length > 0}
-      <MbSchemaList />
+    {#if currentDatabaseConnectionOpen || $openedConnections.length > 0}
+      {#if selectedDatabase}
+        <!-- Tables 列表页：顶部返回按钮 + 表列表 -->
+        <div class="table-list-page">
+          <div class="table-list-header">
+            <div class="back-button" on:pointerup={goBackToSchemas} data-testid="MbScreen_backToSchemas">
+              <FontIcon icon="icon arrow-left" />
+            </div>
+            <div class="table-list-title">{selectedDatabase}</div>
+          </div>
+          <MbTableList conid={$currentDatabase?.connection?._id ?? $openedConnections[0]} database={selectedDatabase} />
+        </div>
+      {:else}
+        <MbSchemaList on:selectDatabase={(e) => { selectedDatabase = e.detail; }} />
+      {/if}
     {:else}
       <div class="iconbar">
         <WidgetIconPanel />
@@ -213,7 +245,7 @@
     color: var(--theme-generic-font);
   }
 
-  /* 列表页：Schemas 列表 或 原连接管理 UI，占满状态栏以上的整屏 */
+  /* 列表页：Schemas/Tables 列表 或 原连接管理 UI，占满状态栏以上的整屏 */
   .list-page {
     position: fixed;
     top: 0;
@@ -224,6 +256,44 @@
   }
   .list-page.hidden {
     display: none;
+  }
+  /* Tables 列表页内布局：顶部导航 + 表列表内容，占满 list-page */
+  .table-list-page {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .table-list-header {
+    display: flex;
+    align-items: center;
+    height: 44px;
+    flex-shrink: 0;
+    background-color: var(--theme-tabs-panel-background);
+    border-bottom: var(--theme-tabs-panel-border);
+  }
+  .table-list-header .back-button {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20pt;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .table-list-header .back-button:hover {
+    color: var(--theme-generic-font-hover);
+  }
+  .table-list-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-right: 10px;
+    font-size: 16px;
+    font-weight: 600;
   }
   /* 数据页不能用 display:none 隐藏：表行 pointerup 会先于页面切换信号打开新 tab
      （行内 handler 先于 document 委托冒泡），DataGridCore 随之挂载。

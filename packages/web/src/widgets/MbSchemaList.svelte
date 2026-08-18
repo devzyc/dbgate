@@ -8,6 +8,10 @@
   // 点击事件使用 pointerup（移动端可靠），handler 暂为 TODO，待下一级 Tables 页面开发时接入。
   import { currentDatabase, openedConnections } from '../stores';
   import { useDatabaseList } from '../utility/metadataLoaders';
+  import { switchCurrentDatabase } from '../utility/common';
+  import { createEventDispatcher } from 'svelte';
+
+  const dispatch = createEventDispatcher();
 
   // 优先使用 currentDatabase 中的连接 ID；
   // 新连接可能没有 defaultDatabase（currentDatabase 为 null），
@@ -22,11 +26,13 @@
   // 返回 [{name:"tk"}, {name:"from-java"}, {name:"information_schema"}, ...]
   $: databases = useDatabaseList({ conid });
 
-  // 移动端点击处理（pointerup）：TODO — 待开发下一级 Tables 页面时接入跳转逻辑
+  // 移动端点击处理（pointerup）：切换到选中数据库，通知父组件显示 Tables 列表
   function handleDbPointerUp(dbName: string) {
-    // TODO: 切换到该数据库，然后展示该数据库下的 Tables 列表
-    // 预留参数：conid, dbName, connection
-    console.log('[MbSchemaList] database clicked:', dbName, { conid, currentDbName });
+    if (!conid) return;
+    const connection = $currentDatabase?.connection ?? null;
+    switchCurrentDatabase({ connection, name: dbName });
+    // 通过事件通知 MbScreen 切换到 Tables 列表页
+    dispatch('selectDatabase', dbName);
   }
 </script>
 
