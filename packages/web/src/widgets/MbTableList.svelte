@@ -72,23 +72,6 @@
     openTableRequestSignal.update(x => x + 1);
   }
 
-  // 格式化行数（大数字加千位分隔符）
-  function formatRowCount(value: number | string): string {
-    const num = typeof value === 'string' ? parseInt(value, 10) : value;
-    if (isNaN(num)) return String(value ?? '');
-    return num.toLocaleString();
-  }
-
-  // 格式化字节大小为可读字符串
-  function formatSize(bytes: number | string): string {
-    const num = typeof bytes === 'string' ? parseInt(bytes, 10) : bytes;
-    if (!num || isNaN(num)) return '';
-    if (num < 1024) return `${num} B`;
-    if (num < 1024 * 1024) return `${(num / 1024).toFixed(1)} KB`;
-    if (num < 1024 * 1024 * 1024) return `${(num / (1024 * 1024)).toFixed(1)} MB`;
-    return `${(num / (1024 * 1024 * 1024)).toFixed(1)} GB`;
-  }
-
   // 获取对象类型图标
   function getTypeIcon(objectTypeField: string): string {
     switch (objectTypeField) {
@@ -104,7 +87,7 @@
 <!--
   移动端表列表页：
   - 顶部显示数据库名称标题
-  - 下方为表名称列表，每项显示表名 + 行数/大小信息
+  - 下方为表名称列表，每项只显示表名
   - 每项占满一行，pointerup 点击
   - 无搜索框、无工具栏（移动端简化）
 -->
@@ -137,17 +120,6 @@
           <span class="table-icon">{getTypeIcon(item.objectTypeField)}</span>
           <div class="table-info">
             <span class="table-name">{item.pureName}</span>
-            <span class="table-meta">
-              {#if item.rowCount != null}
-                {formatRowCount(item.rowCount)} rows
-              {/if}
-              {#if item.sizeBytes != null && item.rowCount != null}
-                , {formatSize(item.sizeBytes)}
-              {/if}
-              {#if item.tableEngine}
-                , {item.tableEngine}
-              {/if}
-            </span>
           </div>
         </div>
       {/each}
@@ -235,24 +207,11 @@
   .table-info {
     flex: 1;
     min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
   }
 
   /* 表名称 */
   .table-name {
     font-size: 16px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  /* 表元信息（行数、大小、引擎） */
-  .table-meta {
-    font-size: 13px;
-    color: var(--theme-generic-font, #999);
-    opacity: 0.6;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
