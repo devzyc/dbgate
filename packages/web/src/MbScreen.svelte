@@ -110,12 +110,52 @@
   let gridTouchLastX = 0;
   let gridTouchLastY = 0;
 
+  // ---- 移动端长按弹出右键菜单 ----
+  // PC 端通过右键（button==2）触发 contextmenu 事件 → contextMenu 指令显示下拉菜单
+  // （含 Edit cell / Copy / Delete 等操作）。移动端触摸不会派发 contextmenu 事件，
+  // 这里在触摸开始时启动 500ms 定时器，若手指未移动超过阈值即触发，
+  // 合成 contextmenu MouseEvent 派发到触摸目标 td 上，事件冒泡到 DataGridCore
+  // 的 .container（use:contextMenu 指令所在元素）后由既有逻辑处理。
+  // 滚动（手指移动 >10px）或提前抬手均取消定时器，不影响正常的滑动翻页手势。
+  let longPressTimer = null;
+  let longPressStartX = 0;
+  let longPressStartY = 0;
+  let longPressTarget = null;
+
   function isGridTouchTarget(target) {
     if (!(target instanceof Element)) return false;
     const dataPage = document.querySelector('[data-testid="MbScreen_dataPage"]');
     if (!dataPage) return false;
     const scrollContainer = dataPage.querySelector('.tableScrollContainer');
     return !!scrollContainer && scrollContainer.contains(target);
+  }
+
+  function cancelLongPress() {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+    longPressTarget = null;
+  }
+
+  function handleCellLongPress() {
+    longPressTimer = null;
+    if (!longPressTarget) return;
+    const target = longPressTarget;
+    longPressTarget = null;
+    // 合成 contextmenu 事件，冒泡到 DataGridCore .container 上的
+    // use:contextMenu 指令处理，弹出右键菜单（Edit cell 等）
+    target.dispatchEvent(
+      new MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        clientX: longPressStartX,
+        clientY: longPressStartY,
+        pageX: longPressStartX,
+        pageY: longPressStartY,
+        button: 2,
+      })
+    );
   }
 
   function handleGridTouchStart(e) {
@@ -125,6 +165,12 @@
     gridTouchId = e.touches[0].identifier;
     gridTouchLastX = e.touches[0].clientX;
     gridTouchLastY = e.touches[0].clientY;
+    // 启动长按定时器（500ms），届时若手指仍在原位则弹出右键菜单
+    cancelLongPress();
+    longPressStartX = e.touches[0].clientX;
+    longPressStartY = e.touches[0].clientY;
+    longPressTarget = e.target;
+    longPressTimer = setTimeout(handleCellLongPress, 500);
   }
 
   function handleGridTouchMove(e) {
@@ -135,6 +181,14 @@
     const dy = touch.clientY - gridTouchLastY;
     gridTouchLastX = touch.clientX;
     gridTouchLastY = touch.clientY;
+    // 手指移动超过 10px 阈值 → 判定为滚动，取消长按
+    if (longPressTimer) {
+      const distX = Math.abs(touch.clientX - longPressStartX);
+      const distY = Math.abs(touch.clientY - longPressStartY);
+      if (distX > 10 || distY > 10) {
+        cancelLongPress();
+      }
+    }
     if (dx == 0 && dy == 0) return;
     try {
       // 手指右滑（dx>0）→ deltaX 为负 → 列左移，与触控板自然滚动方向一致
@@ -156,6 +210,7 @@
     if (gridTouchId == null) return;
     if (Array.from(e.touches).some(x => x.identifier == gridTouchId)) return;
     gridTouchId = null;
+    cancelLongPress();
   }
 
   onMount(() => {
