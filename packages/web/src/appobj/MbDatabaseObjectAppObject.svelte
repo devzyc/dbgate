@@ -813,7 +813,11 @@
         title: tabComponent
           ? getObjectTitle(connection, schemaName, pureName)
           : _t('dbObject.query', { defaultMessage: 'Query #' }),
-        focused: tabComponent == null,
+        // 移动端：始终设置 focused=true，确保 DataGridCore 的 activator
+        // 在 tab 打开时自动激活（通过 focusOnVisible → domFocusField.focus()），
+        // 这样工具栏按钮（如 New row）的命令能被正确启用。
+        // PC 端（DatabaseObjectAppObject.svelte）保持原样：focused: tabComponent == null。
+        focused: true,
         tooltip,
         icon:
           icon ||

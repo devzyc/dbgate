@@ -63,6 +63,7 @@
   .toolstrip {
     display: flex;
     flex-wrap: wrap;
+    flex-shrink: 0;
     align-items: center;
     background: var(--theme-toolstrip-background);
     border-top: var(--theme-toolstrip-border);

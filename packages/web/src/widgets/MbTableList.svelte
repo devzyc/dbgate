@@ -67,7 +67,7 @@
         conid,
         database,
       },
-      { tabPreviewMode: false }
+      { tabPreviewMode: false, focusTab: true }
     );
     openTableRequestSignal.update(x => x + 1);
   }
