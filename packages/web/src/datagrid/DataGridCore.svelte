@@ -5,6 +5,12 @@
   // cmd 列自动补全的固定自定义候选词（与数据库历史值合并去重后作为最终候选）
   const CUSTOM_CMD_SUGGESTIONS = ['HB', 'HS', 'heating', 'juggle', 'cc', 'ff', 'combo'];
 
+  // MV 建议值来源表（通用逻辑：任何列名只要在 MV 表中存在，就用 MV 的 DISTINCT 值做自动补全）
+  const MV_SUGGESTION_SOURCE_TABLE = 'mv';
+  // MV 表中用于 fallback 查询的字段名
+  const MV_CHR_FIELD = 'chr';
+  const MV_CMD_FIELD = 'cmd';
+
   registerCommand({
     id: 'dataGrid.refresh',
     category: __t('command.datagrid', { defaultMessage: 'Data grid' }),
@@ -521,25 +527,112 @@
   export let dataEditorTypesBehaviourOverride = null;
 
   /**
-   * 加载 cmd 列自动补全候选：固定自定义词 + 数据库历史值（去重合并）
+   * 从 MV 表加载 cmd 字段的 DISTINCT 值（WHERE chr = chrValue），作为 fallback 候选
+   * 若 chrValue 为空，则仅返回基础自定义候选词
    */
-  async function loadCmdSuggestions() {
+  async function loadCmdSuggestions(chrValue) {
     const apiValues = [];
-    try {
-      const rows = await apiCall('database-connections/load-field-values', {
-        conid,
-        database,
-        schemaName: display.baseTable?.schemaName,
-        pureName: display.baseTable?.pureName,
-        field: 'cmd',
-      });
-      if (Array.isArray(rows)) {
-        apiValues.push(...rows.map(r => String(r.value ?? '')).filter(v => v.length > 0));
+    if (chrValue) {
+      try {
+        const resp = await apiCall('database-connections/sql-select', {
+          conid,
+          database,
+          select: {
+            commandType: 'select',
+            distinct: true,
+            from: { name: { pureName: MV_SUGGESTION_SOURCE_TABLE } },
+            columns: [{ exprType: 'column', columnName: MV_CMD_FIELD }],
+            where: {
+              conditionType: 'binary',
+              operator: '=',
+              left: { exprType: 'column', columnName: MV_CHR_FIELD },
+              right: { exprType: 'value', value: chrValue },
+            },
+            orderBy: [{ exprType: 'column', columnName: MV_CMD_FIELD, direction: 'ASC' }],
+          },
+        });
+        if (resp?.rows) {
+          apiValues.push(...resp.rows.map(r => String(r[MV_CMD_FIELD] ?? '')).filter(v => v.length > 0));
+        }
+      } catch (e) {
+        console.error('Failed to load cmd suggestions from MV table', e);
       }
-    } catch (e) {
-      console.error('Failed to load cmd field values', e);
     }
     return [...new Set([...CUSTOM_CMD_SUGGESTIONS, ...apiValues])];
+  }
+
+  /**
+   * 从 MV 表/视图加载列名列表（后台非阻塞，用于判断列是否存在于 MV 中）
+   */
+  async function loadMvColumnNames() {
+    try {
+      const dbinfo = await getDatabaseInfo({ conid, database });
+      const mvTable = [
+        ...(dbinfo?.tables || []),
+        ...(dbinfo?.views || []),
+        ...(dbinfo?.matviews || []),
+      ].find(x => x.pureName?.toLowerCase() === MV_SUGGESTION_SOURCE_TABLE.toLowerCase());
+      if (mvTable?.columns) {
+        return new Set(mvTable.columns.map(c => c.columnName.toLowerCase()));
+      }
+    } catch (e) {
+      console.error('Failed to load MV table column names', e);
+    }
+    return new Set();
+  }
+
+  /**
+   * 判断指定（或当前）编辑列是否存在于 MV 表中
+   */
+  function isColumnInMv(cell = currentCell) {
+    if (!cell || !_.isNumber(cell[1])) return false;
+    const colName = realColumnUniqueNames[cell[1]];
+    if (!colName) return false;
+    // 取基础列名（处理 "table.col" 格式）
+    const baseName = colName.includes('.') ? colName.split('.').pop() : colName;
+    return mvColumnNames.has(baseName.toLowerCase());
+  }
+
+  /**
+   * 从 MV 表加载指定列的 DISTINCT 值作为自动补全候选
+   */
+  async function loadMvColumnSuggestions(columnName) {
+    try {
+      const resp = await apiCall('database-connections/sql-select', {
+        conid,
+        database,
+        select: {
+          commandType: 'select',
+          distinct: true,
+          from: { name: { pureName: MV_SUGGESTION_SOURCE_TABLE } },
+          columns: [{ exprType: 'column', columnName }],
+          orderBy: [{ exprType: 'column', columnName, direction: 'ASC' }],
+        },
+      });
+      if (resp?.rows) {
+        const mvValues = resp.rows.map(r => String(r[columnName] ?? '')).filter(v => v.length > 0);
+        return [...new Set([...CUSTOM_CMD_SUGGESTIONS, ...mvValues])];
+      }
+    } catch (e) {
+      console.error(`Failed to load MV suggestions for column: ${columnName}`, e);
+    }
+    return [...CUSTOM_CMD_SUGGESTIONS];
+  }
+
+  // MV 表的列名集合（小写），用于判断列是否在 MV 中存在
+  let mvColumnNames = new Set();
+  let mvColumnCacheKey = '';
+
+  // 当 conid 或 database 变化时，后台加载 MV 表的列名（不阻塞 UI）
+  $: if (conid && database) {
+    const key = `${conid}::${database}`;
+    if (key !== mvColumnCacheKey) {
+      mvColumnCacheKey = key;
+      mvColumnNames = new Set();
+      loadMvColumnNames().then(result => {
+        mvColumnNames = result;
+      });
+    }
   }
 
   let rowPixelOffset = 0;
@@ -1085,12 +1178,27 @@
     if (!rowData) return null;
     const cellData = rowData[realColumnUniqueNames[currentCell[1]]];
 
-    const cmdSuggestions = await loadCmdSuggestions();
+    // 获取当前行的 CHR 值（内存中，可能尚未提交到数据库）
+    const chrColName = realColumnUniqueNames.find(n => {
+      const base = n.includes('.') ? n.split('.').pop() : n;
+      return base.toLowerCase() === MV_CHR_FIELD;
+    });
+    const chrValue = chrColName ? String(rowData[chrColName] ?? '') : '';
+
+    // 如果列名在 MV 表中存在，使用 MV DISTINCT 值；否则按 CHR 值从 MV 的 cmd 字段查询
+    let suggestions;
+    const currentColName = realColumnUniqueNames[currentCell[1]];
+    const baseColName = currentColName?.includes('.') ? currentColName.split('.').pop() : currentColName;
+    if (baseColName && isColumnInMv()) {
+      suggestions = await loadMvColumnSuggestions(baseColName);
+    } else {
+      suggestions = await loadCmdSuggestions(chrValue);
+    }
 
     showModal(EditCellDataModal, {
       value: cellData,
       dataEditorTypesBehaviour: getEditorTypes(),
-      suggestions: cmdSuggestions,
+      suggestions,
       onSave: value => grider.setCellValue(currentCell[0], realColumnUniqueNames[currentCell[1]], value),
     });
   }
@@ -1655,12 +1763,27 @@
     if (shouldOpenMultilineDialog(cellData)) {
       dragStartCell = null;
 
-      const cmdSuggestions = await loadCmdSuggestions();
+      // 获取当前行的 CHR 值（内存中，可能尚未提交到数据库）
+      const chrColName = realColumnUniqueNames.find(n => {
+        const base = n.includes('.') ? n.split('.').pop() : n;
+        return base.toLowerCase() === MV_CHR_FIELD;
+      });
+      const chrValue = chrColName ? String(rowData[chrColName] ?? '') : '';
+
+      // 如果列名在 MV 表中存在，使用 MV DISTINCT 值；否则按 CHR 值从 MV 的 cmd 字段查询
+      let suggestions;
+      const colName = realColumnUniqueNames[cell[1]];
+      const baseColName = colName?.includes('.') ? colName.split('.').pop() : colName;
+      if (baseColName && isColumnInMv(cell)) {
+        suggestions = await loadMvColumnSuggestions(baseColName);
+      } else {
+        suggestions = await loadCmdSuggestions(chrValue);
+      }
 
       showModal(EditCellDataModal, {
         dataEditorTypesBehaviour: getEditorTypes(),
         value: cellData,
-        suggestions: cmdSuggestions,
+        suggestions,
         onSave: value => grider.setCellValue(cell[0], realColumnUniqueNames[cell[1]], value),
       });
       return true;
