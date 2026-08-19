@@ -1,0 +1,239 @@
+diff --git a/node_modules/monaco-editor/esm/vs/editor/browser/controller/pointerHandler.js b/node_modules/monaco-editor/esm/vs/editor/browser/controller/pointerHandler.js
+index 1c4217a..2099b5e 100644
+--- a/node_modules/monaco-editor/esm/vs/editor/browser/controller/pointerHandler.js
++++ b/node_modules/monaco-editor/esm/vs/editor/browser/controller/pointerHandler.js
+@@ -11,16 +11,91 @@ import { EditorMouseEvent, EditorPointerEventFactory } from '../editorDom.js';
+ import { BrowserFeatures } from '../../../base/browser/canIUse.js';
+ import { TextAreaSyntethicEvents } from './textAreaInput.js';
+ import { mainWindow } from '../../../base/browser/window.js';
++import { Position } from '../../common/core/position.js';
++/**
++ * 移动端触摸选中支持（DbGate 自定义补丁）：
++ * - 手指按住不动超过 SELECT_HOLD_DELAY(150ms) 进入"选中模式"
++ * - 进入选中模式时，若按下位置不在已有选区内部，则先把光标移动到按下位置（新锚点）
++ * - 选中模式下拖动 → dispatchMouse(inSelectionMode: true) 从锚点扩展选区
++ * - 进入选中模式前移动超过容差 → 视为滚动手势，取消进入选中模式
++ */
++function createTouchSelection(handler) {
++    let timer = null;
++    let selecting = false;
++    let startX = 0;
++    let startY = 0;
++    const SELECT_HOLD_DELAY = 150;
++    const MOVE_TOLERANCE = 10;
++
++    function clearTimer() {
++        if (timer) {
++            clearTimeout(timer);
++            timer = null;
++        }
++    }
++
++    function onStart(e) {
++        clearTimer();
++        selecting = false;
++        startX = e.pageX;
++        startY = e.pageY;
++        timer = setTimeout(() => {
++            timer = null;
++            // 进入选中模式：若按下位置不在已有选区内部，先把光标移到按下位置（新锚点）
++            const position = handler._getTouchTargetPosition(startX, startY);
++            if (position) {
++                const selection = handler._context.viewModel.getSelection();
++                const inside = selection
++                    && Position.compare(position, selection.getStartPosition()) >= 0
++                    && Position.compare(position, selection.getEndPosition()) <= 0;
++                if (!inside) {
++                    handler._dispatchTouchGesture(startX, startY, false);
++                }
++                selecting = true;
++            }
++        }, SELECT_HOLD_DELAY);
++    }
++
++    function onEnd() {
++        clearTimer();
++        selecting = false;
++    }
++
++    function onChange(e) {
++        if (!selecting) {
++            // 未进入选中模式：移动超过容差 → 视为滚动，取消进入选中模式
++            if (typeof e.pageX === 'number'
++                && (Math.abs(e.pageX - startX) > MOVE_TOLERANCE || Math.abs(e.pageY - startY) > MOVE_TOLERANCE)) {
++                clearTimer();
++            }
++            return false;
++        }
++        // 选中模式：拖动即扩展选区（惯性滚动事件无 pageX，忽略）
++        if (typeof e.pageX === 'number') {
++            handler._dispatchTouchGesture(e.pageX, e.pageY, true);
++        }
++        return true;
++    }
++
++    function isSelecting() {
++        return selecting;
++    }
++
++    return { onStart, onEnd, onChange, isSelecting };
++}
+ /**
+  * Currently only tested on iOS 13/ iPadOS.
+  */
+ export class PointerEventHandler extends MouseHandler {
+     constructor(context, viewController, viewHelper) {
+         super(context, viewController, viewHelper);
++        this._touchSelection = createTouchSelection(this);
+         this._register(Gesture.addTarget(this.viewHelper.linesContentDomNode));
+         this._register(dom.addDisposableListener(this.viewHelper.linesContentDomNode, EventType.Tap, (e) => this.onTap(e)));
+         this._register(dom.addDisposableListener(this.viewHelper.linesContentDomNode, EventType.Change, (e) => this.onChange(e)));
+         this._register(dom.addDisposableListener(this.viewHelper.linesContentDomNode, EventType.Contextmenu, (e) => this._onContextMenu(new EditorMouseEvent(e, false, this.viewHelper.viewDomNode), false)));
++        this._register(dom.addDisposableListener(this.viewHelper.linesContentDomNode, EventType.Start, (e) => this._touchSelection.onStart(e)));
++        this._register(dom.addDisposableListener(this.viewHelper.linesContentDomNode, EventType.End, (e) => this._touchSelection.onEnd(e)));
+         this._lastPointerType = 'mouse';
+         this._register(dom.addDisposableListener(this.viewHelper.linesContentDomNode, 'pointerdown', (e) => {
+             const pointerType = e.pointerType;
+@@ -43,6 +118,9 @@ export class PointerEventHandler extends MouseHandler {
+         this._register(pointerEvents.onPointerDown(this.viewHelper.viewDomNode, (e, pointerId) => this._onMouseDown(e, pointerId)));
+     }
+     onTap(event) {
++        if (this._touchSelection.isSelecting()) {
++            return;
++        }
+         if (!event.initialTarget || !this.viewHelper.linesContentDomNode.contains(event.initialTarget)) {
+             return;
+         }
+@@ -70,6 +148,9 @@ export class PointerEventHandler extends MouseHandler {
+     }
+     onChange(e) {
+         if (this._lastPointerType === 'touch') {
++            if (this._touchSelection.onChange(e)) {
++                return;
++            }
+             this._context.viewModel.viewLayout.deltaScrollNow(-e.translationX, -e.translationY);
+         }
+     }
+@@ -79,16 +160,66 @@ export class PointerEventHandler extends MouseHandler {
+         }
+         super._onMouseDown(e, pointerId);
+     }
++    _createTouchMouseEvent(pageX, pageY) {
++        const win = dom.getWindow(this.viewHelper.viewDomNode);
++        return {
++            pageX,
++            pageY,
++            button: 0,
++            buttons: 1,
++            detail: 1,
++            target: this.viewHelper.linesContentDomNode,
++            view: win,
++            ctrlKey: false,
++            shiftKey: false,
++            altKey: false,
++            metaKey: false,
++            type: 'touchmove',
++            preventDefault() { },
++            stopPropagation() { }
++        };
++    }
++    _getTouchTargetPosition(pageX, pageY) {
++        const target = this._createMouseTarget(new EditorMouseEvent(this._createTouchMouseEvent(pageX, pageY), false, this.viewHelper.viewDomNode), false);
++        return target.position || null;
++    }
++    _dispatchTouchGesture(pageX, pageY, inSelectionMode) {
++        const target = this._createMouseTarget(new EditorMouseEvent(this._createTouchMouseEvent(pageX, pageY), false, this.viewHelper.viewDomNode), false);
++        if (!target.position) {
++            return;
++        }
++        this.viewController.dispatchMouse({
++            position: target.position,
++            mouseColumn: target.position.column,
++            startedOnLineNumbers: false,
++            revealType: 1 /* NavigationCommandRevealType.Minimal */,
++            mouseDownCount: 1,
++            inSelectionMode,
++            altKey: false,
++            ctrlKey: false,
++            metaKey: false,
++            shiftKey: false,
++            leftButton: true,
++            middleButton: false,
++            onInjectedText: target.type === 6 /* MouseTargetType.CONTENT_TEXT */ && target.detail.injectedText !== null
++        });
++    }
+ }
+ class TouchHandler extends MouseHandler {
+     constructor(context, viewController, viewHelper) {
+         super(context, viewController, viewHelper);
++        this._touchSelection = createTouchSelection(this);
+         this._register(Gesture.addTarget(this.viewHelper.linesContentDomNode));
+         this._register(dom.addDisposableListener(this.viewHelper.linesContentDomNode, EventType.Tap, (e) => this.onTap(e)));
+         this._register(dom.addDisposableListener(this.viewHelper.linesContentDomNode, EventType.Change, (e) => this.onChange(e)));
+         this._register(dom.addDisposableListener(this.viewHelper.linesContentDomNode, EventType.Contextmenu, (e) => this._onContextMenu(new EditorMouseEvent(e, false, this.viewHelper.viewDomNode), false)));
++        this._register(dom.addDisposableListener(this.viewHelper.linesContentDomNode, EventType.Start, (e) => this._touchSelection.onStart(e)));
++        this._register(dom.addDisposableListener(this.viewHelper.linesContentDomNode, EventType.End, (e) => this._touchSelection.onEnd(e)));
+     }
+     onTap(event) {
++        if (this._touchSelection.isSelecting()) {
++            return;
++        }
+         event.preventDefault();
+         this.viewHelper.focusTextArea();
+         const target = this._createMouseTarget(new EditorMouseEvent(event, false, this.viewHelper.viewDomNode), false);
+@@ -101,8 +232,55 @@ class TouchHandler extends MouseHandler {
+         }
+     }
+     onChange(e) {
++        if (this._touchSelection.onChange(e)) {
++            return;
++        }
+         this._context.viewModel.viewLayout.deltaScrollNow(-e.translationX, -e.translationY);
+     }
++    _createTouchMouseEvent(pageX, pageY) {
++        const win = dom.getWindow(this.viewHelper.viewDomNode);
++        return {
++            pageX,
++            pageY,
++            button: 0,
++            buttons: 1,
++            detail: 1,
++            target: this.viewHelper.linesContentDomNode,
++            view: win,
++            ctrlKey: false,
++            shiftKey: false,
++            altKey: false,
++            metaKey: false,
++            type: 'touchmove',
++            preventDefault() { },
++            stopPropagation() { }
++        };
++    }
++    _getTouchTargetPosition(pageX, pageY) {
++        const target = this._createMouseTarget(new EditorMouseEvent(this._createTouchMouseEvent(pageX, pageY), false, this.viewHelper.viewDomNode), false);
++        return target.position || null;
++    }
++    _dispatchTouchGesture(pageX, pageY, inSelectionMode) {
++        const target = this._createMouseTarget(new EditorMouseEvent(this._createTouchMouseEvent(pageX, pageY), false, this.viewHelper.viewDomNode), false);
++        if (!target.position) {
++            return;
++        }
++        this.viewController.dispatchMouse({
++            position: target.position,
++            mouseColumn: target.position.column,
++            startedOnLineNumbers: false,
++            revealType: 1 /* NavigationCommandRevealType.Minimal */,
++            mouseDownCount: 1,
++            inSelectionMode,
++            altKey: false,
++            ctrlKey: false,
++            metaKey: false,
++            shiftKey: false,
++            leftButton: true,
++            middleButton: false,
++            onInjectedText: target.type === 6 /* MouseTargetType.CONTENT_TEXT */ && target.detail.injectedText !== null
++        });
++    }
+ }
+ export class PointerHandler extends Disposable {
+     constructor(context, viewController, viewHelper) {

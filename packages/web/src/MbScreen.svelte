@@ -138,11 +138,21 @@
     longPressTarget = null;
   }
 
+  function blurActiveElement() {
+    const el = document.activeElement;
+    if (el && el !== document.body && typeof el.blur === 'function') el.blur();
+  }
+
   function handleCellLongPress() {
     longPressTimer = null;
     if (!longPressTarget) return;
     const target = longPressTarget;
     longPressTarget = null;
+    // 长按弹出菜单前先关闭可能打开的 inplace 编辑器键盘：
+    // 1) blur 活动元素（InplaceInput → handleBlur → 提交值 + 关闭编辑器）
+    // 2) close reducer 会 focus 屏幕外的 domFocusField，可能重新拉起键盘，
+    //    因此菜单弹出后（宏任务）再 blur 一次确保键盘关闭
+    blurActiveElement();
     // 合成 contextmenu 事件，冒泡到 DataGridCore .container 上的
     // use:contextMenu 指令处理，弹出右键菜单（Edit cell 等）
     target.dispatchEvent(
@@ -156,6 +166,7 @@
         button: 2,
       })
     );
+    setTimeout(blurActiveElement, 0);
   }
 
   function handleGridTouchStart(e) {
@@ -210,6 +221,22 @@
     if (gridTouchId == null) return;
     if (Array.from(e.touches).some(x => x.identifier == gridTouchId)) return;
     gridTouchId = null;
+    // 单击（非长按、非滚动）→ 模拟第二次 mousedown：
+    // PC 端逻辑是“点击已选中单元格才打开 inplace 编辑器”（即双击编辑），
+    // 移动端通过合成第二次 mousedown 实现“单击即进入编辑模式”，
+    // 完整复用 handleGridMouseDown 链路（含 InplaceInput.focus() → 键盘弹出）。
+    // 长按已触发（longPressTimer 为 null）或已滚动（cancelLongPress 清空）时不合成。
+    if (longPressTimer && longPressTarget) {
+      const target = longPressTarget;
+      const td = target instanceof Element ? target.closest('td') : null;
+      // 仅常规数据单元格：行号列/表头/inplace 编辑器 td 无 data-col，被过滤；
+      // 不可编辑单元格由 handleGridMouseDown 的 cellEditable 检查兜底
+      if (td && td.getAttribute('data-col') != null) {
+        target.dispatchEvent(
+          new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 })
+        );
+      }
+    }
     cancelLongPress();
   }
 
