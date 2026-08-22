@@ -3,7 +3,11 @@
   const HORIZONTAL_SCROLL_END_PADDING = 64;
   const getCurrentDataGrid = () => getActiveComponent('DataGridCore');
   // cmd 列自动补全的固定自定义候选词（与数据库历史值合并去重后作为最终候选）
-  const CUSTOM_CMD_SUGGESTIONS = ['HB', 'HS', 'heating', 'juggle', 'cc', 'ff', 'combo'];
+  const CUSTOM_CMD_SUGGESTIONS = [
+          'HB', 'HS', 'heating', 'juggle',
+            'cc', 'ff', 'combo', 'T!', 'SS',
+            'ssl', 'ssr', 'track SS', 'bb'
+  ];
 
   // MV 建议值来源表（通用逻辑：任何列名只要在 MV 表中存在，就用 MV 的 DISTINCT 值做自动补全）
   const MV_SUGGESTION_SOURCE_TABLE = 'mv';
