@@ -14,6 +14,8 @@
   // MV 表中用于 fallback 查询的字段名
   const MV_CHR_FIELD = 'chr';
   const MV_CMD_FIELD = 'cmd';
+  // 不需要自动补全的列（如数字列）
+  const MV_SUGGESTION_EXCLUDED_FIELDS = ['dmg'];
 
   registerCommand({
     id: 'dataGrid.refresh',
@@ -639,6 +641,23 @@
     }
   }
 
+  /**
+   * 确保 MV 列名集合已加载：后台加载是异步的，用户可能在加载完成前就打开编辑器，
+   * 也可能加载失败过一次后不再重试。此处弹窗前同步等待一次；
+   * 若结果为空则重置缓存键，允许后续重试（不覆盖已加载成功的数据）。
+   */
+  async function ensureMvColumnNames() {
+    if (!conid || !database) return;
+    if (mvColumnNames.size > 0) return;
+    const result = await loadMvColumnNames();
+    if (result.size > 0) {
+      mvColumnNames = result;
+    } else {
+      // 加载失败/未找到 MV 表：重置缓存键，下次可重试，避免一次失败永久降级为基础词
+      mvColumnCacheKey = '';
+    }
+  }
+
   let rowPixelOffset = 0;
   let columnPixelOffset = 0;
   const tabFocused: any = getContext('tabFocused');
@@ -1182,21 +1201,29 @@
     if (!rowData) return null;
     const cellData = rowData[realColumnUniqueNames[currentCell[1]]];
 
-    // 获取当前行的 CHR 值（内存中，可能尚未提交到数据库）
-    const chrColName = realColumnUniqueNames.find(n => {
-      const base = n.includes('.') ? n.split('.').pop() : n;
-      return base.toLowerCase() === MV_CHR_FIELD;
-    });
-    const chrValue = chrColName ? String(rowData[chrColName] ?? '') : '';
-
-    // 如果列名在 MV 表中存在，使用 MV DISTINCT 值；否则按 CHR 值从 MV 的 cmd 字段查询
-    let suggestions;
+    // 排除列（如 dmg）：不提供自动补全候选
     const currentColName = realColumnUniqueNames[currentCell[1]];
     const baseColName = currentColName?.includes('.') ? currentColName.split('.').pop() : currentColName;
-    if (baseColName && isColumnInMv()) {
-      suggestions = await loadMvColumnSuggestions(baseColName);
+    let suggestions;
+    if (baseColName && MV_SUGGESTION_EXCLUDED_FIELDS.includes(baseColName.toLowerCase())) {
+      suggestions = [];
     } else {
-      suggestions = await loadCmdSuggestions(chrValue);
+      // 获取当前行的 CHR 值（内存中，可能尚未提交到数据库）
+      const chrColName = realColumnUniqueNames.find(n => {
+        const base = n.includes('.') ? n.split('.').pop() : n;
+        return base.toLowerCase() === MV_CHR_FIELD;
+      });
+      const chrValue = chrColName ? String(rowData[chrColName] ?? '') : '';
+
+      // 弹窗前确保 MV 列名已加载（避免后台异步加载未完成/失败时误入 fallback 分支）
+      await ensureMvColumnNames();
+
+      // 如果列名在 MV 表中存在，使用 MV DISTINCT 值；否则按 CHR 值从 MV 的 cmd 字段查询
+      if (baseColName && isColumnInMv()) {
+        suggestions = await loadMvColumnSuggestions(baseColName);
+      } else {
+        suggestions = await loadCmdSuggestions(chrValue);
+      }
     }
 
     showModal(EditCellDataModal, {
@@ -1767,21 +1794,29 @@
     if (shouldOpenMultilineDialog(cellData)) {
       dragStartCell = null;
 
-      // 获取当前行的 CHR 值（内存中，可能尚未提交到数据库）
-      const chrColName = realColumnUniqueNames.find(n => {
-        const base = n.includes('.') ? n.split('.').pop() : n;
-        return base.toLowerCase() === MV_CHR_FIELD;
-      });
-      const chrValue = chrColName ? String(rowData[chrColName] ?? '') : '';
-
-      // 如果列名在 MV 表中存在，使用 MV DISTINCT 值；否则按 CHR 值从 MV 的 cmd 字段查询
-      let suggestions;
+      // 排除列（如 dmg）：不提供自动补全候选
       const colName = realColumnUniqueNames[cell[1]];
       const baseColName = colName?.includes('.') ? colName.split('.').pop() : colName;
-      if (baseColName && isColumnInMv(cell)) {
-        suggestions = await loadMvColumnSuggestions(baseColName);
+      let suggestions;
+      if (baseColName && MV_SUGGESTION_EXCLUDED_FIELDS.includes(baseColName.toLowerCase())) {
+        suggestions = [];
       } else {
-        suggestions = await loadCmdSuggestions(chrValue);
+        // 获取当前行的 CHR 值（内存中，可能尚未提交到数据库）
+        const chrColName = realColumnUniqueNames.find(n => {
+          const base = n.includes('.') ? n.split('.').pop() : n;
+          return base.toLowerCase() === MV_CHR_FIELD;
+        });
+        const chrValue = chrColName ? String(rowData[chrColName] ?? '') : '';
+
+        // 弹窗前确保 MV 列名已加载（避免后台异步加载未完成/失败时误入 fallback 分支）
+        await ensureMvColumnNames();
+
+        // 如果列名在 MV 表中存在，使用 MV DISTINCT 值；否则按 CHR 值从 MV 的 cmd 字段查询
+        if (baseColName && isColumnInMv(cell)) {
+          suggestions = await loadMvColumnSuggestions(baseColName);
+        } else {
+          suggestions = await loadCmdSuggestions(chrValue);
+        }
       }
 
       showModal(EditCellDataModal, {
