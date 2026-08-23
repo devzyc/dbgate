@@ -223,6 +223,14 @@
     width: 40vw;
   }
 
+  /* 移动端（与 App.svelte MbScreen 分流阈值一致）：编辑区占满弹窗宽度，
+     避免右侧露出背景色；PC 端视口 > 600px，此规则不命中，行为不变 */
+  @media (max-width: 600px) {
+    .editor {
+      width: 100%;
+    }
+  }
+
   .editor-tools {
     display: flex;
     align-items: center;
