@@ -4,6 +4,13 @@
     // 最小化导入：editor.api 提供 monaco 命名空间，editor.all 注册编辑器部件 + suggest 补全
     import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
     import 'monaco-editor/esm/vs/editor/editor.all';
+    import MbCellSuggest from './MbCellSuggest.svelte';
+
+    // 移动端判定（与 App.svelte 的 MbScreen 分流阈值一致：视口宽度 <= 600px）。
+    // 移动端不使用 Monaco 原生 suggest widget：iOS Safari 软键盘弹起时视觉视口与布局视口错位，
+    // fixedOverflowWidgets 定位的下拉会漂到屏幕顶部；改用自定义的 MbCellSuggest 下拉，
+    // 以编辑器容器内绝对定位锚定在光标下方。PC 端 isMbView 恒为 false，行为完全不变。
+    const isMbView = typeof window !== 'undefined' && window.matchMedia('(max-width: 600px)').matches;
 
     const dispatch = createEventDispatcher<{ input: string }>();
 
@@ -30,6 +37,9 @@
     let spanInfos: SpanInfo[] = [];
 
     function registerCompletion() {
+        // 移动端走 MbCellSuggest 自定义下拉，不注册原生补全，避免原生 widget 在 iOS 上定位错乱
+        if (isMbView) return;
+
         // 先注销旧的，避免重复注册
         completionDisposable?.dispose();
 
@@ -83,10 +93,10 @@
             overviewRulerLanes: 0,
             hideCursorInOverviewRuler: true,
             contextmenu: false,
-            // 纯文本补全场景：输入即触发建议
-            quickSuggestions: true,
+            // 纯文本补全场景：输入即触发建议（仅 PC 端；移动端由 MbCellSuggest 接管）
+            quickSuggestions: !isMbView,
             // 必须为 true，provider 声明的 triggerCharacters 才会生效（见 suggestModel.js _updateTriggerCharacters）
-            suggestOnTriggerCharacters: true,
+            suggestOnTriggerCharacters: !isMbView,
         });
 
         editor.onDidChangeModelContent(() => {
@@ -99,6 +109,19 @@
 
         if (onKeyDown) {
             containerEl.addEventListener('keydown', onKeyDown);
+        }
+
+        // 移动端：关闭 iOS 原生自动更正/联想。否则输入时会弹出系统自带的
+        // 候选气泡（如 "juggle ×"，带拒绝按钮），与编辑器自带的补全下拉
+        // （MbCellSuggest，已合并基础词）重复且位置无法控制。PC 端不执行。
+        if (isMbView) {
+            const textarea = containerEl.querySelector('textarea');
+            if (textarea) {
+                textarea.setAttribute('autocorrect', 'off');
+                textarea.setAttribute('autocapitalize', 'off');
+                textarea.setAttribute('autocomplete', 'off');
+                textarea.setAttribute('spellcheck', 'false');
+            }
         }
 
         // 二次打开编辑器时，初始 value 可能包含 span 标签
@@ -128,8 +151,8 @@
         isInternalChange = false;
     }
 
-    // 候选列表变化时重新注册补全
-    $: if (editor && suggestions) {
+    // 候选列表变化时重新注册补全（仅 PC 端）
+    $: if (editor && suggestions && !isMbView) {
         registerCompletion();
     }
 
@@ -308,6 +331,12 @@
 </script>
 
 <div class="monaco-cell-editor" bind:this={containerEl}></div>
+
+<!-- 移动端专用补全下拉：锚定编辑器容器（.editor 为 position:relative），在光标下方弹出。
+     PC 端 isMbView 为 false，永不渲染 -->
+{#if isMbView && editor}
+    <MbCellSuggest {editor} {suggestions} />
+{/if}
 
 <style>
     .monaco-cell-editor {

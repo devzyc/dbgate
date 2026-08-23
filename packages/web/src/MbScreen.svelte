@@ -153,16 +153,28 @@
     // 2) close reducer 会 focus 屏幕外的 domFocusField，可能重新拉起键盘，
     //    因此菜单弹出后（宏任务）再 blur 一次确保键盘关闭
     blurActiveElement();
+    // 菜单锚点：与长按目标单元格的左边缘对齐（而非触摸点），
+    // 保证菜单从单元格左缘向右展开，左侧菜单文字完整可见；
+    // 并预留菜单宽度（DropDownMenu min-width 160px + keyText 余量）做水平钳制，
+    // 避免锚点靠右时菜单整体溢出屏幕右侧。
+    const MENU_SAFE_WIDTH = 200;
+    const td = target instanceof Element ? target.closest('td') : null;
+    const tdLeft = td ? td.getBoundingClientRect().left : longPressStartX;
+    const anchorX = Math.max(0, Math.min(tdLeft, window.innerWidth - MENU_SAFE_WIDTH));
+    // pageX/pageY 必须补上文档滚动偏移：contextMenu 指令用 pageX/pageY 定位，
+    // 而菜单 ul 是文档坐标系下的 absolute 元素；iOS 键盘收起后页面可能残留滚动量，
+    // 若不补偿菜单会偏移出视口（表现为菜单跑出屏幕、需拖动页面才能看到）
+    const anchorY = longPressStartY;
     // 合成 contextmenu 事件，冒泡到 DataGridCore .container 上的
     // use:contextMenu 指令处理，弹出右键菜单（Edit cell 等）
     target.dispatchEvent(
       new MouseEvent('contextmenu', {
         bubbles: true,
         cancelable: true,
-        clientX: longPressStartX,
-        clientY: longPressStartY,
-        pageX: longPressStartX,
-        pageY: longPressStartY,
+        clientX: anchorX,
+        clientY: anchorY,
+        pageX: anchorX + window.scrollX,
+        pageY: anchorY + window.scrollY,
         button: 2,
       })
     );
