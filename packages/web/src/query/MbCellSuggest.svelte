@@ -8,6 +8,10 @@
   // .editor，position: relative），直接锚定在光标下方弹出；
   // 空间不足时向上翻转，但钳制在编辑器顶边以内，不会遮挡编辑器上方的调色板。
   import { onMount } from 'svelte';
+  // 照搬 tk_note_helper 参考实现的模糊匹配算法：vscode-fuzzy-scorer 的 scoreFuzzy。
+  // 该算法自然覆盖三层需求：连续匹配高分（df→df+1）、跳过分隔符匹配（df1→df+1）、
+  // 跨字符模糊匹配（d1→df+1，且连续性更好的候选得分更高，DES.d+1 不会抢到前面）。
+  import { scoreFuzzy } from 'vscode-fuzzy-scorer';
 
   export let editor: any = null;
   export let suggestions: string[] = [];
@@ -21,17 +25,18 @@
   // 当前正在补全的单词范围，点选候选时用于替换
   let wordRange: any = null;
 
-  // 命令词分隔符：仅空白与逗号。不能直接用 model.getWordUntilPosition ——
-  // Monaco 默认 wordDefinition 把 '+'、'.' 当分隔符，输入 "DB+" 后取词为空，
-  // 下拉会直接收起；而命令体系（db+1+2,2 / JGS.2 / df+1,2）里这些是词内字符。
-  // 自行扫描取词，与正则匹配无关，仅影响本组件，PC 端补全不受影响。
-  const CMD_WORD_DELIMITER = /[\s,]/;
+  // 命令词字符集（与参考实现 tk-note-helper-suggest.ts onTrigger 正则一致）：
+  // 字母/数字/_/+/./,///(/)/- 均为词内字符，其余（空白、•、: 等）为分隔。
+  // 不能直接用 model.getWordUntilPosition —— Monaco 默认 wordDefinition 把 '+'、'.'
+  // 当分隔符，输入 "DB+" 后取词为空，下拉会直接收起；命令体系（db+1+2,2 / JGS.2 /
+  // df+1,2）里这些是词内字符。此处与参考实现同构，仅影响本组件，PC 端补全不受影响。
+  const TOKEN_CHARS = /[A-Za-z0-9_+.,()/-]/;
 
   function getCommandWordUntilPosition(model: any, position: any) {
     const line: string = model.getLineContent(position.lineNumber) ?? '';
     const end = Math.min(position.column - 1, line.length);
     let start = end;
-    while (start > 0 && !CMD_WORD_DELIMITER.test(line[start - 1])) start--;
+    while (start > 0 && TOKEN_CHARS.test(line[start - 1])) start--;
     return {
       word: line.substring(start, end),
       startColumn: start + 1,
@@ -69,16 +74,22 @@
       endColumn: word.endColumn,
     };
 
-    const prefix = (word.word ?? '').toLowerCase();
-    if (!prefix) return hide();
+    // 照搬参考实现：用 scoreFuzzy 对每个候选评分，score>0 表示命中，按分数降序。
+    // 不再用手写 startsWith/includes 两级匹配——scoreFuzzy 的连续性加权已天然实现
+    // 三层优先级。参考：tk-note-helper-suggest.ts getSuggestions
+    const query = (word.word ?? '').trim();
+    if (!query) return hide();
+    const queryLower = query.toLowerCase();
 
-    // 优先前缀匹配（如 kin -> KING），无命中时退化为包含匹配；排除与已输入内容完全相同的候选
-    let matches = suggestions.filter(s => s.toLowerCase().startsWith(prefix) && s.toLowerCase() !== prefix);
-    if (matches.length === 0) {
-      matches = suggestions.filter(s => s.toLowerCase().includes(prefix) && s.toLowerCase() !== prefix);
-    }
-    if (matches.length === 0) return hide();
-    items = matches.slice(0, 100);
+    const scored = suggestions
+      .map(s => {
+        const res = scoreFuzzy(s, query, queryLower, true);
+        return { item: s, score: res ? res[0] : 0 };
+      })
+      .filter(x => x.score > 0)
+      .sort((a, b) => b.score - a.score);
+    if (scored.length === 0) return hide();
+    items = scored.slice(0, 100).map(x => x.item);
 
     positionDropdown(position);
     visible = true;
