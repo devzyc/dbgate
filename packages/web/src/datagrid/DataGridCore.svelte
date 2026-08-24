@@ -17,6 +17,11 @@
   // 不需要自动补全的列（如数字列）
   const MV_SUGGESTION_EXCLUDED_FIELDS = ['dmg'];
 
+  // 移动端宽列阈值（像素，约 8 字符）：列宽 ≥ 此值的列在移动端不走就地编辑
+  // （单行 input 装不下带回车换行的多行内容、长文本光标定位差），直接进
+  // Monaco 模态框（与长按菜单 Edit cell value 同款老路径）。PC 端不受影响。
+  const MB_WIDE_COLUMN_WIDTH = 130;
+
   registerCommand({
     id: 'dataGrid.refresh',
     category: __t('command.datagrid', { defaultMessage: 'Data grid' }),
@@ -1807,7 +1812,12 @@
     const rowData = grider.getRowData(cell[0]);
     if (!rowData) return null;
     const cellData = rowData[realColumnUniqueNames[cell[1]]];
-    if (shouldOpenMultilineDialog(cellData)) {
+    // 移动端宽列（≥130px）：不走就地编辑（单行 input 装不下带回车换行的多行
+    // 内容、长文本光标定位差），与多行内容一样直接走 Monaco 模态框老路径
+    const isMbWideColumn =
+      isMbInplaceSuggestView &&
+      (visibleRealColumns.find(col => col.colIndex == cell[1])?.width ?? 0) >= MB_WIDE_COLUMN_WIDTH;
+    if (shouldOpenMultilineDialog(cellData) || isMbWideColumn) {
       dragStartCell = null;
 
       // 排除列（如 dmg）：不提供自动补全候选
@@ -2361,6 +2371,61 @@
     return {};
   }, {});
 
+  // ===== 移动端就地编辑自动补全（MbInplaceSuggest）=====
+  // isMbView 判定与 MonacoEditor.svelte 保持一致（PC 端恒为 false，零影响：
+  // 不预载候选、不发额外查询、传给 DataGridRow 的候选恒为空数组）
+  const isMbInplaceSuggestView =
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 600px)').matches;
+
+  // 就地编辑候选（isMbView 时随 props 传到 InplaceInput → MbInplaceSuggest）
+  let inplaceSuggestions: string[] = [];
+  // 迭代计数器：快速切换编辑单元格时丢弃过期异步响应（Tabulator listIteration 模式）
+  let inplaceSuggestionIteration = 0;
+
+  // 数据源逻辑与 editCellValue() 一致：
+  // - 排除列（dmg）→ 无候选
+  // - 列名在 MV 表中存在（如 CHR）→ MV 该列 DISTINCT 值
+  // - 其他列 → WHERE CHR=当前行CHR值 从 MV 查 CMD 值（CHR 为空时仅基础自定义词）
+  async function loadInplaceSuggestions(cell) {
+    const iteration = ++inplaceSuggestionIteration;
+    let suggestions: string[] = [];
+    try {
+      const rowData = grider.getRowData(cell[0]);
+      const colName = realColumnUniqueNames[cell[1]];
+      const baseColName = colName?.includes('.') ? colName.split('.').pop() : colName;
+      if (baseColName && !MV_SUGGESTION_EXCLUDED_FIELDS.includes(baseColName.toLowerCase())) {
+        // 当前行的 CHR 值（内存中，可能尚未提交到数据库）
+        const chrColName = realColumnUniqueNames.find(n => {
+          const base = n.includes('.') ? n.split('.').pop() : n;
+          return base.toLowerCase() === MV_CHR_FIELD;
+        });
+        const chrValue = chrColName && rowData ? String(rowData[chrColName] ?? '') : '';
+
+        // 弹出前确保 MV 列名已加载（避免后台异步加载未完成时误入 fallback 分支）
+        await ensureMvColumnNames();
+
+        if (baseColName && isColumnInMv(cell)) {
+          suggestions = await loadMvColumnSuggestions(baseColName);
+        } else {
+          suggestions = await loadCmdSuggestions(chrValue);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load inplace suggestions', e);
+    }
+    // 过期响应丢弃：期间用户已切换到其他单元格
+    if (iteration !== inplaceSuggestionIteration) return;
+    inplaceSuggestions = suggestions;
+  }
+
+  $: if (isMbInplaceSuggestView) {
+    if ($inplaceEditorState.cell) {
+      loadInplaceSuggestions($inplaceEditorState.cell);
+    } else {
+      inplaceSuggestions = [];
+    }
+  }
+
   function focusFilterEditor(columnRealIndex) {
     let modelIndex = columnSizes.realToModel(columnRealIndex);
     const domFilter = domFilterControlsRef.get()[columns[modelIndex].uniqueName];
@@ -2733,6 +2798,7 @@
                 {dataEditorTypesBehaviourOverride}
                 {gridColoringMode}
                 {overlayDefinition}
+                inplaceSuggestions={inplaceSuggestions}
               />
             {/each}
           {/if}

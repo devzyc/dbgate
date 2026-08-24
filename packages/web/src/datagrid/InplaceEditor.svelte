@@ -11,6 +11,8 @@
   export let canSelectMultipleOptions;
   export let driver;
   export let dataEditorTypesBehaviourOverride = null;
+  // 移动端就地编辑的自动补全候选（DataGridCore 预载）；PC 端恒为空数组，行为不变
+  export let inplaceSuggestions: string[] = [];
 </script>
 
 <td class="editor">
@@ -35,6 +37,7 @@
         {onSetValue}
         {driver}
         {dataEditorTypesBehaviourOverride}
+        {inplaceSuggestions}
       />
     {/if}
   </div>

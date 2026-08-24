@@ -46,6 +46,9 @@
 
   export let dataEditorTypesBehaviourOverride = null;
 
+  // 移动端就地编辑的自动补全候选（DataGridCore 预载）；PC 端恒为空数组，行为不变
+  export let inplaceSuggestions: string[] = [];
+
   $: rowData = grider.getRowData(rowIndex);
   $: rowStatus = grider.getRowStatus(rowIndex);
 
@@ -95,6 +98,7 @@
         onSetValue={value => grider.setCellValue(rowIndex, col.uniqueName, value)}
         {driver}
         {dataEditorTypesBehaviourOverride}
+        {inplaceSuggestions}
       />
     {:else}
       <DataGridCell
