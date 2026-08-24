@@ -1586,7 +1586,23 @@
   }
 
   $: if ($tabFocused && domFocusField && focusOnVisible) {
+    focusGridWhenVisible();
+  }
+
+  // focus() 静默失败的防御性重试（移动端 MbScreen 场景）：
+  // tab 打开瞬间数据页可能仍处于 CSS visibility:hidden（MbScreen 用 class 切页），
+  // 不可见元素的 focus() 不生效且不报错，而上述响应式语句的依赖此后不再变化，
+  // 永不重试 —— 表现为首次打开表时工具栏只显示不依赖网格 activator 的少数按钮，
+  // 手动点一下单元格（handleGridMouseDown → focus）才恢复。
+  // 此处检测焦点未生效时短暂重试；PC 端活动 tab 可见，首次 focus 总是成功，
+  // 立即返回，行为不变。
+  function focusGridWhenVisible(attempt = 0) {
+    if (!domFocusField) return;
     domFocusField.focus();
+    if (document.activeElement === domFocusField) return; // focus 生效，结束
+    if (attempt >= 20) return; // 上限防御（约 1 秒），避免异常场景下无限重试
+    if (document.activeElement !== document.body) return; // 用户已聚焦其他元素，不抢焦点
+    setTimeout(() => focusGridWhenVisible(attempt + 1), 50);
   }
 
   const lastPublishledSelectedCellsRef = createRef('');

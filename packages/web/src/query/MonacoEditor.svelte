@@ -73,6 +73,18 @@
         });
     }
 
+    // 移动端主题：编辑区背景从纯白改为灰白（#E9E9E7），降低夜间/低亮度下的刺眼感；
+    // 不可再灰，否则接近酱黑色。PC 端保持默认 'vs' 主题纯白背景不变。
+    const MB_GRAY_THEME = 'dbgate-cell-graybg';
+    monaco.editor.defineTheme(MB_GRAY_THEME, {
+        base: 'vs',
+        inherit: true,
+        rules: [],
+        colors: {
+            'editor.background': '#E9E9E7',
+        },
+    });
+
     onMount(() => {
         // 注册一个自定义纯文本语言，避免依赖内置语言的额外注册
         monaco.languages.register({ id: LANGUAGE_ID });
@@ -81,6 +93,8 @@
         editor = monaco.editor.create(containerEl, {
             value,
             language: LANGUAGE_ID,
+            // 仅移动端应用灰白背景主题，PC 端使用默认 'vs' 纯白主题
+            theme: isMbView ? MB_GRAY_THEME : 'vs',
             readOnly,
             automaticLayout: true, // 容器尺寸变化时自动重排，省去手动 resize
             fixedOverflowWidgets: true,
@@ -109,19 +123,6 @@
 
         if (onKeyDown) {
             containerEl.addEventListener('keydown', onKeyDown);
-        }
-
-        // 移动端：关闭 iOS 原生自动更正/联想。否则输入时会弹出系统自带的
-        // 候选气泡（如 "juggle ×"，带拒绝按钮），与编辑器自带的补全下拉
-        // （MbCellSuggest，已合并基础词）重复且位置无法控制。PC 端不执行。
-        if (isMbView) {
-            const textarea = containerEl.querySelector('textarea');
-            if (textarea) {
-                textarea.setAttribute('autocorrect', 'off');
-                textarea.setAttribute('autocapitalize', 'off');
-                textarea.setAttribute('autocomplete', 'off');
-                textarea.setAttribute('spellcheck', 'false');
-            }
         }
 
         // 二次打开编辑器时，初始 value 可能包含 span 标签

@@ -21,6 +21,24 @@
   // 当前正在补全的单词范围，点选候选时用于替换
   let wordRange: any = null;
 
+  // 命令词分隔符：仅空白与逗号。不能直接用 model.getWordUntilPosition ——
+  // Monaco 默认 wordDefinition 把 '+'、'.' 当分隔符，输入 "DB+" 后取词为空，
+  // 下拉会直接收起；而命令体系（db+1+2,2 / JGS.2 / df+1,2）里这些是词内字符。
+  // 自行扫描取词，与正则匹配无关，仅影响本组件，PC 端补全不受影响。
+  const CMD_WORD_DELIMITER = /[\s,]/;
+
+  function getCommandWordUntilPosition(model: any, position: any) {
+    const line: string = model.getLineContent(position.lineNumber) ?? '';
+    const end = Math.min(position.column - 1, line.length);
+    let start = end;
+    while (start > 0 && !CMD_WORD_DELIMITER.test(line[start - 1])) start--;
+    return {
+      word: line.substring(start, end),
+      startColumn: start + 1,
+      endColumn: end + 1,
+    };
+  }
+
   onMount(() => {
     if (!editor) return;
     // 防御性注册：使用 ?. 避免未来 monaco 版本差异导致 undefined 方法崩溃。
@@ -43,7 +61,7 @@
     const position = editor.getPosition();
     if (!model || !position) return hide();
 
-    const word = model.getWordUntilPosition(position);
+    const word = getCommandWordUntilPosition(model, position);
     wordRange = {
       startLineNumber: position.lineNumber,
       endLineNumber: position.lineNumber,
