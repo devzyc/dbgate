@@ -73,15 +73,17 @@
         });
     }
 
-    // 移动端主题：编辑区背景从纯白改为灰白（#E9E9E7），降低夜间/低亮度下的刺眼感；
-    // 不可再灰，否则接近酱黑色。PC 端保持默认 'vs' 主题纯白背景不变。
-    const MB_GRAY_THEME = 'dbgate-cell-graybg';
+    // 移动端主题：编辑区背景采用 Darcula 风格深灰（#2B2B2B，说黑不黑、说灰不灰），
+    // 夜间/低亮度下不刺眼。背景变深后文字必须同步变浅，故 base 用 vs-dark
+    // （浅色前景 + 深色选区/光标），再覆盖编辑区背景色。
+    // PC 端保持默认 'vs' 主题纯白背景不变。
+    const MB_GRAY_THEME = 'dbgate-cell-darkbg';
     monaco.editor.defineTheme(MB_GRAY_THEME, {
-        base: 'vs',
+        base: 'vs-dark',
         inherit: true,
         rules: [],
         colors: {
-            'editor.background': '#E9E9E7',
+            'editor.background': '#2B2B2B',
         },
     });
 
@@ -93,7 +95,7 @@
         editor = monaco.editor.create(containerEl, {
             value,
             language: LANGUAGE_ID,
-            // 仅移动端应用灰白背景主题，PC 端使用默认 'vs' 纯白主题
+            // 仅移动端应用深灰背景主题，PC 端使用默认 'vs' 纯白主题
             theme: isMbView ? MB_GRAY_THEME : 'vs',
             readOnly,
             automaticLayout: true, // 容器尺寸变化时自动重排，省去手动 resize
