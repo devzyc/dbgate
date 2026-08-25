@@ -1,0 +1,586 @@
+   [root@instance-ophkapjb dbgate]# cd /opt/dbgate
+[root@instance-ophkapjb dbgate]# tree -L 2 .
+.
+├── bundle.js
+├── bundle.js.LICENSE.txt
+├── dbgate-serve.js
+├── node_modules
+│   ├── abbrev
+│   ├── abort-controller
+│   ├── abstract-logging
+│   ├── accepts
+│   ├── acorn
+│   ├── acorn-jsx
+│   ├── activedirectory2
+│   ├── agent-base
+│   ├── ajv
+│   ├── ansi-escapes
+│   ├── ansi-regex
+│   ├── ansi-styles
+│   ├── archiver
+│   ├── archiver-utils
+│   ├── argparse
+│   ├── array-flatten
+│   ├── asn1
+│   ├── assert-plus
+│   ├── astral-regex
+│   ├── async
+│   ├── asynckit
+│   ├── async-lock
+│   ├── at-least-node
+│   ├── @aws
+│   ├── @aws-sdk
+│   ├── axios
+│   ├── b4a
+│   ├── @babel
+│   ├── backoff
+│   ├── balanced-match
+│   ├── bare-events
+│   ├── bare-fs
+│   ├── bare-path
+│   ├── bare-stream
+│   ├── bare-url
+│   ├── base64-js
+│   ├── basic-auth
+│   ├── bcrypt-pbkdf
+│   ├── blueimp-md5
+│   ├── body-parser
+│   ├── bowser
+│   ├── brace-expansion
+│   ├── buffer
+│   ├── buffer-crc32
+│   ├── buffer-equal-constant-time
+│   ├── busboy
+│   ├── byline
+│   ├── bytes
+│   ├── call-bind
+│   ├── call-bind-apply-helpers
+│   ├── call-bound
+│   ├── callsites
+│   ├── chalk
+│   ├── chardet
+│   ├── chownr
+│   ├── cli-cursor
+│   ├── cli-width
+│   ├── color-convert
+│   ├── color-name
+│   ├── combined-stream
+│   ├── compare-versions
+│   ├── compress-commons
+│   ├── concat-map
+│   ├── content-disposition
+│   ├── content-type
+│   ├── cookie
+│   ├── cookie-signature
+│   ├── core-util-is
+│   ├── cors
+│   ├── crc-32
+│   ├── crc32-stream
+│   ├── cross-env
+│   ├── cross-spawn
+│   ├── date-fns
+│   ├── dbgate-api
+│   ├── dbgate-datalib
+│   ├── dbgate-filterparser
+│   ├── dbgate-query-splitter
+│   ├── dbgate-rest
+│   ├── dbgate-sqltree
+│   ├── dbgate-tools
+│   ├── debug
+│   ├── deep-is
+│   ├── define-data-property
+│   ├── delayed-stream
+│   ├── depd
+│   ├── destroy
+│   ├── diff
+│   ├── diff2html
+│   ├── doctrine
+│   ├── dotenv
+│   ├── dunder-proto
+│   ├── eastasianwidth
+│   ├── ecdsa-sig-formatter
+│   ├── ee-first
+│   ├── emoji-regex
+│   ├── encodeurl
+│   ├── escape-html
+│   ├── escape-string-regexp
+│   ├── es-define-property
+│   ├── es-errors
+│   ├── eslint
+│   ├── eslint-scope
+│   ├── eslint-utils
+│   ├── eslint-visitor-keys
+│   ├── es-object-atoms
+│   ├── espree
+│   ├── esprima
+│   ├── esquery
+│   ├── esrecurse
+│   ├── es-set-tostringtag
+│   ├── estraverse
+│   ├── esutils
+│   ├── etag
+│   ├── events
+│   ├── events-universal
+│   ├── event-target-shim
+│   ├── express
+│   ├── express-basic-auth
+│   ├── express-fileupload
+│   ├── external-editor
+│   ├── extsprintf
+│   ├── fast-deep-equal
+│   ├── fast-fifo
+│   ├── fast-json-stable-stringify
+│   ├── fast-levenshtein
+│   ├── figures
+│   ├── file-entry-cache
+│   ├── finalhandler
+│   ├── flat-cache
+│   ├── flatted
+│   ├── follow-redirects
+│   ├── foreground-child
+│   ├── form-data
+│   ├── forwarded
+│   ├── fresh
+│   ├── from
+│   ├── fs-extra
+│   ├── fs-minipass
+│   ├── fs.realpath
+│   ├── fs-reverse
+│   ├── functional-red-black-tree
+│   ├── function-bind
+│   ├── get-intrinsic
+│   ├── get-port
+│   ├── get-proto
+│   ├── glob
+│   ├── globals
+│   ├── glob-parent
+│   ├── gopd
+│   ├── graceful-fs
+│   ├── has-flag
+│   ├── hasown
+│   ├── has-property-descriptors
+│   ├── has-symbols
+│   ├── has-tostringtag
+│   ├── highlight.js
+│   ├── http
+│   ├── http-errors
+│   ├── https-proxy-agent
+│   ├── iconv-lite
+│   ├── ieee754
+│   ├── ignore
+│   ├── import-fresh
+│   ├── imurmurhash
+│   ├── inflight
+│   ├── inherits
+│   ├── inquirer
+│   ├── ipaddr.js
+│   ├── @isaacs
+│   ├── isarray
+│   ├── is-electron
+│   ├── isexe
+│   ├── is-extglob
+│   ├── is-fullwidth-code-point
+│   ├── is-glob
+│   ├── is-plain-obj
+│   ├── is-stream
+│   ├── jackspeak
+│   ├── jsonfile
+│   ├── jsonify
+│   ├── json-schema-traverse
+│   ├── json-stable-stringify
+│   ├── json-stable-stringify-without-jsonify
+│   ├── jsonwebtoken
+│   ├── js-tokens
+│   ├── js-yaml
+│   ├── jwa
+│   ├── jws
+│   ├── lazystream
+│   ├── ldap-filter
+│   ├── ldapjs
+│   ├── levn
+│   ├── line-reader
+│   ├── lodash
+│   ├── lodash.includes
+│   ├── lodash.isboolean
+│   ├── lodash.isinteger
+│   ├── lodash.isnumber
+│   ├── lodash.isplainobject
+│   ├── lodash.isstring
+│   ├── lodash.once
+│   ├── lru-cache
+│   ├── math-intrinsics
+│   ├── media-typer
+│   ├── merge-descriptors
+│   ├── merge-options
+│   ├── methods
+│   ├── mime
+│   ├── mime-db
+│   ├── mime-types
+│   ├── mimic-fn
+│   ├── minimatch
+│   ├── minimist
+│   ├── minipass
+│   ├── minizlib
+│   ├── mkdirp
+│   ├── moment
+│   ├── ms
+│   ├── mute-stream
+│   ├── natural-compare
+│   ├── ncp
+│   ├── negotiator
+│   ├── nice-try
+│   ├── node-cron
+│   ├── nopt
+│   ├── normalize-path
+│   ├── object-assign
+│   ├── object-inspect
+│   ├── object-keys
+│   ├── once
+│   ├── onetime
+│   ├── on-finished
+│   ├── openapi-types
+│   ├── opencollective-postinstall
+│   ├── optionator
+│   ├── os-tmpdir
+│   ├── package-json-from-dist
+│   ├── parent-module
+│   ├── parseurl
+│   ├── parsimmon
+│   ├── path-is-absolute
+│   ├── path-key
+│   ├── path-scurry
+│   ├── path-to-regexp
+│   ├── pend
+│   ├── picocolors
+│   ├── pinomin
+│   ├── @pkgjs
+│   ├── portfinder
+│   ├── precond
+│   ├── prelude-ls
+│   ├── process
+│   ├── process-nextick-args
+│   ├── @profoundlogic
+│   ├── progress
+│   ├── proxy-addr
+│   ├── proxy-from-env
+│   ├── punycode
+│   ├── qs
+│   ├── range-parser
+│   ├── raw-body
+│   ├── readable-stream
+│   ├── readdir-glob
+│   ├── regexpp
+│   ├── resolve-from
+│   ├── restore-cursor
+│   ├── rimraf
+│   ├── run-async
+│   ├── rxjs
+│   ├── safe-buffer
+│   ├── safer-buffer
+│   ├── scmp
+│   ├── semver
+│   ├── send
+│   ├── serve-static
+│   ├── set-function-length
+│   ├── setprototypeof
+│   ├── shebang-command
+│   ├── shebang-regex
+│   ├── side-channel
+│   ├── side-channel-list
+│   ├── side-channel-map
+│   ├── side-channel-weakmap
+│   ├── signal-exit
+│   ├── simple-encryptor
+│   ├── slice-ansi
+│   ├── @smithy
+│   ├── sprintf-js
+│   ├── ssh2
+│   ├── statuses
+│   ├── stream-chain
+│   ├── stream-json
+│   ├── streamsearch
+│   ├── streamx
+│   ├── string_decoder
+│   ├── string-width
+│   ├── string-width-cjs
+│   ├── strip-ansi
+│   ├── strip-ansi-cjs
+│   ├── strip-json-comments
+│   ├── supports-color
+│   ├── table
+│   ├── tar
+│   ├── tar-stream
+│   ├── teex
+│   ├── text-decoder
+│   ├── text-table
+│   ├── through
+│   ├── tmp
+│   ├── toidentifier
+│   ├── toposort
+│   ├── tslib
+│   ├── tweetnacl
+│   ├── type-check
+│   ├── type-fest
+│   ├── type-is
+│   ├── @types
+│   ├── tz-offset
+│   ├── universalify
+│   ├── unpipe
+│   ├── uri-js
+│   ├── util-deprecate
+│   ├── utils-merge
+│   ├── uuid
+│   ├── v8-compile-cache
+│   ├── vary
+│   ├── vasync
+│   ├── verror
+│   ├── which
+│   ├── word-wrap
+│   ├── wrap-ansi
+│   ├── wrap-ansi-cjs
+│   ├── wrappy
+│   ├── write
+│   ├── yallist
+│   ├── yauzl
+│   ├── zip-stream
+│   └── zod
+├── package.json
+├── package-lock.json
+├── packer
+│   └── build
+├── plugins
+│   ├── dbgate-plugin-cassandra
+│   ├── dbgate-plugin-clickhouse
+│   ├── dbgate-plugin-csv
+│   ├── dbgate-plugin-dbf
+│   ├── dbgate-plugin-duckdb
+│   ├── dbgate-plugin-excel
+│   ├── dbgate-plugin-firebird
+│   ├── dbgate-plugin-mongo
+│   ├── dbgate-plugin-mssql
+│   ├── dbgate-plugin-mysql
+│   ├── dbgate-plugin-oracle
+│   ├── dbgate-plugin-postgres
+│   ├── dbgate-plugin-redis
+│   ├── dbgate-plugin-sqlite
+│   └── dbgate-plugin-xml
+└── public
+    ├── admin.html
+    ├── admin-license.html
+    ├── admin-login.html
+    ├── build
+    ├── bulma.css
+    ├── dimensions.css
+    ├── error.html
+    ├── favicon.ico
+    ├── forgot-password.html
+    ├── global.css
+    ├── icon-colors.css
+    ├── index.html
+    ├── license.html
+    ├── login.html
+    ├── logo192.png
+    ├── logo512.png
+    ├── manifest.json
+    ├── not-logged.html
+    ├── redirect.html
+    ├── reset-password.html
+    ├── set-admin-password.html
+    ├── tailwind-colors.css
+    ├── tokens.css
+    └── unknown.svg
+
+360 directories, 28 files
+
+
+
+  834  root 2026/08/24 20:55:29 clear
+  835  root 2026/08/24 20:57:10 pwd
+  836  root 2026/08/24 20:57:13 ls -lh /opt/
+  837  root 2026/08/24 20:57:13 node -v
+  838  root 2026/08/24 20:57:17 npm -v
+  839  root 2026/08/24 20:57:57 d /opt/dbgate
+  840  root 2026/08/24 20:58:13 clear
+  841  root 2026/08/24 20:58:14 cd /opt/dbgate
+  842  root 2026/08/24 20:58:15 npm install --production
+  843  root 2026/08/24 20:58:58 clear
+  844  root 2026/08/24 20:58:59 ls -lah /opt/dbgate
+  845  root 2026/08/24 20:58:59 find /opt/dbgate -maxdepth 2 -name package.json
+  846  root 2026/08/24 20:59:53 tar -tzf /opt/dbgate-production.tar.gz | head -30
+  847  root 2026/08/24 21:02:14 d /opt
+  848  root 2026/08/24 21:02:14 mv dbgate dbgate-backup-old
+  849  root 2026/08/24 21:02:14 mkdir dbgate
+  850  root 2026/08/24 21:02:14 tar -xzvf /opt/dbgate-production.tar.gz -C /opt/dbgate
+  851  root 2026/08/24 21:02:18 ls -lah /opt/dbgate
+  852  root 2026/08/24 21:03:15 cd
+  853  root 2026/08/24 21:03:18 cd /opt
+  854  root 2026/08/24 21:03:18 mv dbgate dbgate-backup-old
+  855  root 2026/08/24 21:03:18 mkdir dbgate
+  856  root 2026/08/24 21:03:18 tar -xzvf /opt/dbgate-production.tar.gz -C /opt/dbgate
+  857  root 2026/08/24 21:03:20 ls -lah /opt/dbgate
+  858  root 2026/08/24 21:06:46 clear
+  859  root 2026/08/24 21:06:58 cd /opt/dbgate
+  860  root 2026/08/24 21:06:59 cat package.json
+  861  root 2026/08/24 21:07:46 npm install --omit=dev
+  862  root 2026/08/24 21:09:01 ls -lah node_modules
+  863  root 2026/08/24 21:09:49 clear
+  864  root 2026/08/24 21:09:50 cd /opt/dbgate
+  865  root 2026/08/24 21:09:51 node bundle.js
+  866  root 2026/08/24 21:11:04 pwd
+  867  root 2026/08/24 21:11:07 ps aux | grep node
+  868  root 2026/08/24 21:12:21 clear
+  869  root 2026/08/24 21:12:23 curl http://127.0.0.1:3000
+  870  root 2026/08/24 21:12:36 ss -lntp | grep 3000
+  871  root 2026/08/24 21:12:43 firewall-cmd --state
+  872  root 2026/08/24 21:13:26 clear
+  873  root 2026/08/24 21:13:46 firewall-cmd --list-ports
+  874  root 2026/08/24 21:13:57 systemctl status firewalld --no-pager
+  875  root 2026/08/24 21:15:51 clear
+  876  root 2026/08/24 21:15:52 firewall-cmd --add-port=3000/tcp --permanent
+  877  root 2026/08/24 21:15:52 firewall-cmd --reload
+  878  root 2026/08/24 21:15:54 firewall-cmd --list-ports
+  879  root 2026/08/24 21:22:58 pwd
+  880  root 2026/08/24 21:23:10 cd /opt/dbgate
+  881  root 2026/08/24 21:23:21 node bundle.js
+  882  root 2026/08/24 21:33:42 cd
+  883  root 2026/08/24 21:33:44 mv /opt/dbgate /opt/dbgate-old
+  884  root 2026/08/24 21:10:37 node bundle.js --listen-api
+  885  root 2026/08/24 21:33:58 pwd
+  886  root 2026/08/24 21:34:38 cd
+  887  root 2026/08/24 21:34:40 cls
+  888  root 2026/08/24 21:34:43 clear
+  889  root 2026/08/24 21:36:08 mkdir /opt/dbgate
+  890  root 2026/08/24 21:36:21 tar -xzf /opt/dbgate-production.tar.gz -C /opt/dbgate
+  891  root 2026/08/24 21:36:46 clear
+  892  root 2026/08/24 21:36:48 ls -lah /opt/dbgate
+  893  root 2026/08/24 21:44:23 node dbgate-serve.js --listen-api
+  894  root 2026/08/24 21:44:32 pwd
+  895  root 2026/08/24 21:44:47 cd /opt/dbgate
+  896  root 2026/08/24 21:44:52 node dbgate-serve.js --listen-api
+  897  root 2026/08/24 21:46:19 clear
+  898  root 2026/08/24 21:46:21 npm install dotenv --omit=dev
+  899  root 2026/08/24 21:47:55 node dbgate-serve.js --listen-api
+  900  root 2026/08/24 21:49:27 clear
+  901  root 2026/08/24 21:49:28 npm install dbgate-api --omit=dev
+  902  root 2026/08/24 21:55:15 clear
+  903  root 2026/08/24 21:57:29 curl http://127.0.0.1:3000
+  904  root 2026/08/24 21:57:33 curl http://127.0.0.1:3000
+  905  root 2026/08/24 21:58:57 ls -lah public
+  906  root 2026/08/24 21:59:00 pwd
+  907  root 2026/08/24 21:59:09 cd /opt/dbgate
+  908  root 2026/08/24 21:59:12 ls -lah public
+  909  root 2026/08/24 22:04:25 clear
+  910  root 2026/08/24 22:07:04 curl http://127.0.0.1:17654
+  911  root 2026/08/24 22:11:47 ll
+  912  root 2026/08/24 22:12:01 clear
+  913  root 2026/08/24 22:15:12 curl -I http://127.0.0.1:17654
+  914  root 2026/08/24 22:16:46 curl -I http://106.13.18.150:17654
+  915  root 2026/08/24 22:32:16 pwd
+  916  root 2026/08/24 22:32:17 cd /opt/dbgate
+  917  root 2026/08/24 22:32:22 clear
+  918  root 2026/08/24 22:32:23 pwd
+  919  root 2026/08/24 22:32:30 ls -lah
+  920  root 2026/08/24 22:04:30 npx serve public -p 17654
+  921  root 2026/08/24 22:35:05 ps aux | grep dbgate-serve
+  922  root 2026/08/24 22:36:13 clear
+  923  root 2026/08/24 22:36:14 curl -I http://127.0.0.1:3000
+  924  root 2026/08/24 21:55:19 node dbgate-serve.js --listen-api
+  925  root 2026/08/24 22:42:02 kill 1527180
+  926  root 2026/08/24 22:42:04 kill 1527180
+  927  root 2026/08/24 22:42:09 ps aux | grep dbgate-serve
+  928  root 2026/08/24 22:42:26 clear
+  929  root 2026/08/24 22:42:29 pwd
+  930  root 2026/08/24 22:47:49 curl -I http://127.0.0.1:3000
+  931  root 2026/08/24 22:48:14 exit
+  932  root 2026/08/24 22:49:34 node dbgate-serve.js --help
+  933  root 2026/08/24 22:49:45 pwd
+  934  root 2026/08/24 22:49:55 cd /opt/dbgate
+  935  root 2026/08/24 22:49:58 node dbgate-serve.js --help
+  936  root 2026/08/24 20:34:52 x86_64
+  937  root 2026/08/24 22:44:07 node dbgate-serve.js
+  938  root 2026/08/25 10:04:43 cd /opt/dbgate
+  939  root 2026/08/25 10:09:33 zyc@192 DbGate % ls packages/web
+  940  root 2026/08/25 10:09:33 build-index.jsnode_modulespublicsrc
+  941  root 2026/08/25 10:09:33 build-tailwind.jspackage.jsonREADME.mdtailwind.config.js
+  942  root 2026/08/25 10:09:33 index.html.tplpostcss.config.jsrolldown.config.mjstsconfig.json
+  943  root 2026/08/25 10:09:33 zyc@192 DbGate % ls packages/web/dist
+  944  root 2026/08/25 10:09:33 ls: packages/web/dist: No such file or directory
+  945  root 2026/08/25 10:09:45 zyc@192 DbGate %ll
+  946  root 2026/08/25 10:09:48 ls -l
+  947  root 2026/08/25 10:10:24 clear
+  948  root 2026/08/25 10:10:28 ls -lah public/build
+  949  root 2026/08/25 10:14:55 clear
+  950  root 2026/08/25 10:14:57 ps aux | grep dbgate
+  951  root 2026/08/25 10:16:11 [root@instance-ophkapjb dbgate]# ps aux | grep dbgate
+  952  root 2026/08/25 10:16:11 root     1909969  0.0  0.0  12216  1100 pts/0    S+   10:14   0:00 grep --color=auto dbgate
+  953  root 2026/08/25 10:16:14 [root@instance-ophkapjb dbgate]# [root@instance-ophkapjb dbgate]# ps aux | grep dbgate
+  954  root 2026/08/25 10:16:14 root     1909969  0.0  0.0  12216  1100 pts/0    S+   10:14   0:00 grep --color=auto dbgate
+  955  root 2026/08/25 10:16:26 ps aux | grep node
+  956  root 2026/08/25 10:16:54 ss -lntp | grep 3000
+  957  root 2026/08/25 10:17:22 clear
+  958  root 2026/08/25 10:29:01 curl -I http://127.0.0.1:3000
+  959  root 2026/08/25 10:31:08 curl -I http://127.0.0.1:3000/index.html
+  960  root 2026/08/25 10:32:06 curl -I http://127.0.0.1:3000/login.html
+  961  root 2026/08/25 10:37:01 clear
+  962  root 2026/08/25 10:37:04 grep -R "express.static" -n /opt/dbgate
+  963  root 2026/08/25 10:43:18 ed -n '60,120p' /opt/dbgate/node_modules/dbgate-api/src/main.js
+  964  root 2026/08/25 10:43:28 pwd
+  965  root 2026/08/25 10:43:37 cd /opt/dbgate
+  966  root 2026/08/25 10:43:39 ed -n '60,120p' /opt/dbgate/node_modules/dbgate-api/src/main.js
+  967  root 2026/08/25 10:43:45 ls -l
+  968  root 2026/08/25 10:44:10 grep -n "publicDir" /opt/dbgate/node_modules/dbgate-api/src/main.js
+  969  root 2026/08/25 10:45:41 sed -n '60,120p' /opt/dbgate/node_modules/dbgate-api/src/main.js
+  970  root 2026/08/25 10:46:32 [root@instance-ophkapjb ~]# ed -n '60,120p' /opt/dbgate/node_modules/dbgate-api/src/main.js
+  971  root 2026/08/25 10:46:32 ed: invalid option -- 'n'
+  972  root 2026/08/25 10:46:32 Try 'ed --help' for more information.
+  973  root 2026/08/25 10:46:32 [root@instance-ophkapjb ~]# pwd
+  974  root 2026/08/25 10:46:32 /root
+  975  root 2026/08/25 10:46:32 [root@instance-ophkapjb ~]# cd /opt/dbgate
+  976  root 2026/08/25 10:46:32 [root@instance-ophkapjb dbgate]# ed -n '60,120p' /opt/dbgate/node_modules/dbgate-api/src/main.js
+  977  root 2026/08/25 10:46:32 ed: invalid option -- 'n'
+  978  root 2026/08/25 10:46:32 Try 'ed --help' for more information.
+  979  root 2026/08/25 10:46:32 [root@instance-ophkapjb dbgate]# ls -l
+  980  root 2026/08/25 10:46:32 total 3144
+  981  root 2026/08/25 10:46:32 -rw-r--r--   1  501 games 2993325 Aug 24 20:52 bundle.js
+  982  root 2026/08/25 10:46:32 -rw-r--r--   1  501 games    6333 Aug 24 20:52 bundle.js.LICENSE.txt
+  983  root 2026/08/25 10:46:32 -rwxr-xr-x   1  501 games     320 Aug 24 21:27 dbgate-serve.js
+  984  root 2026/08/25 10:46:32 drwxr-xr-x 342 root root    12288 Aug 24 21:53 node_modules
+  985  root 2026/08/25 10:46:32 -rw-r--r--   1  501 games     200 Aug 24 21:53 package.json
+  986  root 2026/08/25 10:46:32 -rw-r--r--   1 root root   187670 Aug 24 21:53 package-lock.json
+  987  root 2026/08/25 10:46:32 drwxr-xr-x  17  501 games    4096 Aug 24 21:36 plugins
+  988  root 2026/08/25 10:46:32 drwxr-xr-x   3  501 games    4096 Aug 24 21:36 public
+  989  root 2026/08/25 10:46:32 [root@instance-ophkapjb dbgate]# grep -n "publicDir" /opt/dbgate/node_modules/dbgate-api/src/main.js
+  990  root 2026/08/25 10:46:32 54:function registerExpressStatic(app, publicDir) {
+  991  root 2026/08/25 10:46:32 58:      const filePath = path.join(publicDir, relPath);
+  992  root 2026/08/25 10:46:32 93:  app.use(getExpressPath('/'), express.static(publicDir));
+  993  root 2026/08/25 10:47:17 clear
+  994  root 2026/08/25 10:47:31 grep -R "registerExpressStatic" -n /opt/dbgate/node_modules/dbgate-api/src
+  995  root 2026/08/25 10:50:10 clear
+  996  root 2026/08/25 10:28:04 node dbgate-serve.js
+  997  root 2026/08/25 10:51:26 exit
+  998  root 2026/08/25 10:52:35 mkdir -p /opt/dbgate/packer/build
+  999  root 2026/08/25 10:52:58 cp -r /opt/dbgate/public /opt/dbgate/packer/build/
+ 1000  root 2026/08/25 10:53:12 ls -lah /opt/dbgate/packer/build/public
+ 1001  root 2026/08/25 10:55:05 clear
+ 1002  root 2026/08/25 10:55:07 ps aux | grep dbgate-serve
+ 1003  root 2026/08/25 10:57:43 cd /opt/dbgate
+ 1004  root 2026/08/25 10:57:49 nohup node dbgate-serve.js > /var/log/dbgate.log 2>&1 &
+ 1005  root 2026/08/25 10:58:02 ps aux | grep dbgate-serve
+ 1006  root 2026/08/25 10:58:11 ss -lntp | grep 3000
+ 1007  root 2026/08/25 10:58:58 curl -i http://127.0.0.1:3000/
+ 1008  root 2026/08/25 10:59:46 clear
+ 1009  root 2026/08/25 10:59:49 grep -R "authorization" -n /opt/dbgate/node_modules/dbgate-api/src
+ 1010  root 2026/08/25 11:01:29 clear
+ 1011  root 2026/08/25 11:01:33 sed -n '150,220p' /opt/dbgate/node_modules/dbgate-api/src/main.js
+ 1012  root 2026/08/25 11:02:41 clear
+ 1013  root 2026/08/25 11:02:42 cd /opt/dbgate
+ 1014  root 2026/08/25 11:02:43 grep -n "packer/build/public" node_modules/dbgate-api/src/main.js
+ 1015  root 2026/08/25 11:03:48 ls -lah packer/build/public/login.html
+ 1016  root 2026/08/25 11:04:56 node -e "console.log(process.cwd())"
+ 1017  root 2026/08/25 11:05:49 curl -I http://127.0.0.1:3000/login.html
+ 1018  root 2026/08/25 11:07:47 curl -I http://127.0.0.1:3000/login.html
+ 1019  root 2026/08/25 11:07:22 PORT=3000 node dbgate-serve.js
+ 1020  root 2026/08/25 11:11:49 grep -R "getExpressPath" -n /opt/dbgate/node_modules/dbgate-api/src
+ 1021  root 2026/08/25 11:11:58 grep -R "platformInfo" -n /opt/dbgate/node_modules/dbgate-api/src
+ 1022  root 2026/08/25 12:50:01 history
+ 1023  root 2026/08/25 12:51:51 history > cmd.log

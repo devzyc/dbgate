@@ -3,8 +3,6 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/DbGate.iml" filepath="$PROJECT_DIR$/.idea/DbGate.iml" />
-      <module fileurl="file://$PROJECT_DIR$/../auto-complete/monaco-editor/.idea/monaco-editor.iml" filepath="$PROJECT_DIR$/../auto-complete/monaco-editor/.idea/monaco-editor.iml" />
-      <module fileurl="file://$PROJECT_DIR$/../obsidian_auto_complete_plugin/plugin/tk_note_helper/.idea/tk_note_helper.iml" filepath="$PROJECT_DIR$/../obsidian_auto_complete_plugin/plugin/tk_note_helper/.idea/tk_note_helper.iml" />
     </modules>
   </component>
 </project>
